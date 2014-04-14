@@ -274,6 +274,33 @@ public:
     return false;
   }
 
+  bool compare(const ComboAddress *ip) const
+  {
+    if(d_network.sin4.sin_family != ip->sin4.sin_family) {
+      return d_network.sin4.sin_family == AF_INET;
+    }
+    if(d_network.sin4.sin_family == AF_INET) {
+        u_int32_t _ip = htonl((unsigned int)ip->sin4.sin_addr.s_addr);
+        return (_ip & d_mask) < (ntohl(d_network.sin4.sin_addr.s_addr) & d_mask);
+    }
+    if(d_network.sin6.sin6_family == AF_INET6) {
+        const uint8_t *us=(const uint8_t*) &d_network.sin6.sin6_addr.s6_addr;
+        const uint8_t *them=(const uint8_t*) &ip->sin6.sin6_addr.s6_addr;
+        uint8_t bytes= d_bits / 8;
+
+        int compRes = memcmp(us, them, bytes);
+
+        if (compRes >= 0)
+          return false;
+
+        uint8_t bits= d_bits % 8;
+        uint8_t mask= ~(0xFF>>bits);
+
+        return((us[bytes] & mask) < (them[bytes] & mask));
+    }
+    return false;
+  }
+
   //! If this ASCII IP address matches
   bool match(const string &ip) const
   {

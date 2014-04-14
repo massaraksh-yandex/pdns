@@ -21,6 +21,7 @@
 */
 #include "logger.hh"
 #include "config.h"
+#include <fstream>
 
 #ifndef RECURSOR
 #include "statbag.hh"
@@ -44,23 +45,36 @@ void Logger::log(const string &msg, Urgency u)
   time(&t);
   tm=*localtime(&t);
 
-  if(u<=consoleUrgency) {// Sep 14 06:52:09
-    char buffer[50];
-    strftime(buffer,sizeof(buffer),"%b %d %H:%M:%S ", &tm);
-    clog<<buffer;
-    clog <<msg <<endl;
+  char buffer[50];
+  strftime(buffer,sizeof(buffer),"%b %d %H:%M:%S ", &tm);
+
+  if (fout.is_open()) {
+    fout << buffer;
+    fout << msg << endl;
   }
-  if( u <= d_loglevel ) {
+  else {
+    if(u<=consoleUrgency) {// Sep 14 06:52:09
+      clog<<buffer;
+      clog <<msg <<endl;
+    }
+    if( u <= d_loglevel ) {
 #ifndef RECURSOR
-    S.ringAccount("logmessages",msg);
+      S.ringAccount("logmessages",msg);
 #endif
-    syslog(u,"%s",msg.c_str());
+      syslog(u,"%s",msg.c_str());
+    }
   }
 }
 
 void Logger::setLoglevel( Urgency u )
 {
   d_loglevel = u;
+}
+
+bool Logger::toFile(const string &filename)
+{
+  fout.open(filename.c_str(), std::ofstream::out | std::ofstream::app);
+  return fout.is_open();
 }
   
 

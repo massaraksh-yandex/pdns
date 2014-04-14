@@ -52,6 +52,8 @@
 #include <boost/lexical_cast.hpp>
 #include <boost/function.hpp>
 #include <boost/algorithm/string.hpp>
+#include <map>
+#include <list>
 #include <netinet/tcp.h>
 #include "dnsparser.hh"
 #include "dnswriter.hh"
@@ -65,6 +67,7 @@
 #include "lua-recursor.hh"
 #include "version.hh"
 #include "responsestats.hh"
+#include "rrliptable.hh"
 
 #ifndef RECURSOR
 #include "statbag.hh"
@@ -623,14 +626,33 @@ void startDoResolve(void *p)
   sendit:;
     g_rs.submitResponse(dc->d_mdp.d_qtype, packet.size(), !dc->d_tcp);
     if(!dc->d_tcp) {
-      sendto(dc->d_socket, (const char*)&*packet.begin(), packet.size(), 0, (struct sockaddr *)(&dc->d_remote), dc->d_remote.getSocklen());
+      // TEST new answer
+
       if(!SyncRes::s_nopacketcache && !variableAnswer ) {
         t_packetCache->insertResponsePacket(string((const char*)&*packet.begin(), packet.size()),
-                                            g_now.tv_sec, 
-                                            min(minTTL, 
-                                                (pw.getHeader()->rcode == RCode::ServFail) ? SyncRes::s_packetcacheservfailttl : SyncRes::s_packetcachettl
-                                            ) 
-        );
+                                              g_now.tv_sec,
+                                              min(minTTL,
+                                                  (pw.getHeader()->rcode == RCode::ServFail) ? SyncRes::s_packetcacheservfailttl : SyncRes::s_packetcachettl
+                                              )
+          );
+      }
+
+      RrlNode node = rrlIpTable().getNode(dc->d_remote);
+
+      bool blocked = false;
+      if (!node.isInWhiteList) {
+        bool blockByRatio = rrlIpTable().updateRecord(node, (double)packet.size() / dc->d_mdp.d_len);
+        bool blockByType  = rrlIpTable().updateRecord(node, QType(dc->d_mdp.d_qtype));
+        blocked = blockByType || blockByRatio;
+
+        if (blocked) {
+            pw.getHeader()->tc = 1;
+            pw.truncate();
+        }
+      }
+
+      if (!(blocked && rrlIpTable().dropQueries())) {
+          sendto(dc->d_socket, (const char*)&*packet.begin(), packet.size(), 0, (struct sockaddr *)(&dc->d_remote), dc->d_remote.getSocklen());
       }
     }
     else {
@@ -860,12 +882,13 @@ void handleNewTCPQuestion(int fd, FDMultiplexer::funcparam_t& )
   }
 }
  
-string* doProcessUDPQuestion(const std::string& question, const ComboAddress& fromaddr, int fd)
+string* doProcessUDPQuestion(const std::string& question, const ComboAddress& fromaddr, int fd, RrlNode rrlNode)
 {
   ++g_stats.qcounter;
   if(fromaddr.sin4.sin_family==AF_INET6)
      g_stats.ipv6qcounter++;
 
+  DNSComboWriter* dc = new DNSComboWriter(question.c_str(), question.size(), g_now);
   string response;
   try {
     uint32_t age;
@@ -875,8 +898,35 @@ string* doProcessUDPQuestion(const std::string& question, const ComboAddress& fr
 
       g_stats.packetCacheHits++;
       SyncRes::s_queries++;
+
+      // TEST answer from cache
+      bool blocked = false;
+      if (!rrlNode.isInWhiteList) {
+        bool blockByType  = rrlIpTable().updateRecord(rrlNode, QType(dc->d_mdp.d_qtype));
+        bool blockByRatio = rrlIpTable().updateRecord(rrlNode, (double)response.size() / question.size());
+        blocked = blockByType || blockByRatio;
+
+        if (blocked) {
+          vector<uint8_t> packet;
+          DNSPacketWriter pw(packet, dc->d_mdp.d_qname, dc->d_mdp.d_qtype, dc->d_mdp.d_qclass);
+
+          pw.getHeader()->aa=0;
+          pw.getHeader()->ra=1;
+          pw.getHeader()->qr=1;
+          pw.getHeader()->tc=1;
+          pw.getHeader()->id=dc->d_mdp.d_header.id;
+          pw.getHeader()->rd=dc->d_mdp.d_header.rd;
+          pw.truncate();
+          response = string((const char*)&*packet.begin(), packet.size());
+        }
+      }
+
       ageDNSPacket(response, age);
-      sendto(fd, response.c_str(), response.length(), 0, (struct sockaddr*) &fromaddr, fromaddr.getSocklen());
+
+      if (!(blocked && rrlIpTable().dropQueries())) {
+          sendto(fd, response.c_str(), response.length(), 0, (struct sockaddr*) &fromaddr, fromaddr.getSocklen());
+      }
+
       if(response.length() >= sizeof(struct dnsheader)) {
         struct dnsheader dh;
         memcpy(&dh, response.c_str(), sizeof(dh));
@@ -897,10 +947,8 @@ string* doProcessUDPQuestion(const std::string& question, const ComboAddress& fr
     return 0;
   }
   
-  DNSComboWriter* dc = new DNSComboWriter(question.c_str(), question.size(), g_now);
   dc->setSocket(fd);
   dc->setRemote(&fromaddr);
-
   dc->d_tcp=false;
   MT->makeThread(startDoResolve, (void*) dc); // deletes dc
   return 0;
@@ -936,10 +984,17 @@ void handleNewUDPQuestion(int fd, FDMultiplexer::funcparam_t& var)
       }
       else {
         string question(data, len);
+
+        // TEST blocking
+        RrlNode node = rrlIpTable().getNode(fromaddr);
+        rrlIpTable().decreaseCounters(node);
+        if(node.blocked() && rrlIpTable().dropQueries())
+          return;
+
         if(g_weDistributeQueries)
-          distributeAsyncFunction(boost::bind(doProcessUDPQuestion, question, fromaddr, fd));
+          distributeAsyncFunction(boost::bind(doProcessUDPQuestion, question, fromaddr, fd, node));
         else
-          doProcessUDPQuestion(question, fromaddr, fd);
+          doProcessUDPQuestion(question, fromaddr, fd, node);
       }
     }
     catch(MOADNSException& mde) {
@@ -2122,6 +2177,23 @@ int main(int argc, char **argv)
     ::arg().set("udp-truncation-threshold", "Maximum UDP response size before we truncate")="1680";
 
     ::arg().set("include-dir","Include *.conf files from this directory")="";
+
+    ::arg().setSwitch("rrl-enable", "Enable RRL functionality")  = "no";
+    ::arg().set("rrl-ipv4-prefix-length", "Significant bits in IPv4 address") = "24";
+    ::arg().set("rrl-ipv6-prefix-length", "Significant bits in IPv4 address") = "56";
+    ::arg().set("rrl-types", "\'Type Filter\'. Requests with this types are significant") = "ANY,RRSIG";
+    ::arg().set("rrl-limit-types-count", "Count of requests with types from rrl-types. When the number of such requests exceed this value, the IP-address will be blocked.") = "50";
+    ::arg().set("rrl-ratio", "\'Ratio filter\'. Ratio between answer's size and request's size") = "5.0";
+    ::arg().set("rrl-limit-ratio-count", "Count of requests with ratio from rrl-ratio. When the number of such requests exceed this value, the IP-address will be blocked.") = "50";
+    ::arg().set("rrl-detection-period", "Time in milliseconds for increasing Filters\' counters. At the end of this period counters are decreased.") = "10";
+    ::arg().set("rrl-blocking-period", "If any filter\'s condition are true, the IP-address will be blocked for this time (in ms)") = "20";
+    ::arg().set("rrl-drop-requests", "If yes, the requests from blocked address are dropped. Otherwise, the requests are truncated")  = "no";
+    ::arg().setSwitch("rrl-enable-log-file", "Log blocking actions to file")  = "no";
+    ::arg().set("rrl-log-file", "") = "Path for log file";
+    ::arg().setSwitch("rrl-enable-white-list", "Enable list of addresses, which cannot be blocked")  = "no";
+    ::arg().set("rrl-white-list", "") = "Path to white list";
+    ::arg().setSwitch("rrl-enable-special-limits", "Enable special conditions for some addresses")  = "no";
+    ::arg().set("rrl-special-limits", "Path to file with special limits") = "";
 
     ::arg().setCmd("help","Provide a helpful message");
     ::arg().setCmd("version","Print version string");

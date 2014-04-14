@@ -1,8 +1,10 @@
 # user editable stuff:
-SBINDIR=/usr/sbin/
-BINDIR=/usr/bin/
-SYSCONFDIR=/etc/powerdns/
-LOCALSTATEDIR=/var/run/
+DESTDIR=/
+SBINDIR=$(DESTDIR)sbin
+BINDIR=$(DESTDIR)bin
+SYSCONFDIR=$(DESTDIR)etc/powerdns
+LOCALSTATEDIR=$(DESTDIR)var/run
+DOCDIR=docs
 OPTFLAGS?=-O3
 CXXFLAGS:= $(CXXFLAGS) -Iext/rapidjson/include -I$(CURDIR)/ext/polarssl-1.3.2/include -Wall $(OPTFLAGS) $(PROFILEFLAGS) $(ARCHFLAGS) -pthread -Iext/yahttp
 CFLAGS:=$(CFLAGS) -Wall $(OPTFLAGS) $(PROFILEFLAGS) $(ARCHFLAGS) -I$(CURDIR)/ext/polarssl-1.3.2/include -pthread
@@ -22,7 +24,7 @@ rec_channel.o rec_channel_rec.o selectmplexer.o sillyrecords.o \
 dns_random.o ext/polarssl-1.3.2/library/aes.o ext/polarssl-1.3.2/library/padlock.o dnslabeltext.o \
 lua-pdns.o lua-recursor.o randomhelper.o recpacketcache.o dns.o \
 reczones.o base32.o nsecrecords.o json.o ws-recursor.o ws-api.o \
-version.o responsestats.o session.o webserver.o ext/yahttp/yahttp/reqresp.o
+version.o responsestats.o rrliptable.o session.o webserver.o ext/yahttp/yahttp/reqresp.o
 
 REC_CONTROL_OBJECTS=rec_channel.o rec_control.o arguments.o misc.o \
 	unix_utility.o logger.o qtype.o
@@ -31,7 +33,7 @@ REC_CONTROL_OBJECTS=rec_channel.o rec_control.o arguments.o misc.o \
 all: message version_generated.h build
 
 # OS specific instructions
--include sysdeps/$(shell uname).inc
+-include sysdeps-recursor/$(shell uname).inc
 
 ifeq ($(LUA), 1)
 	LUALIBS=$(LUA_LIBS_CONFIG)
@@ -66,10 +68,10 @@ build_host=$(shell id -u -n)@$(shell hostname -f)
 version_generated.h:
 	echo '#ifndef VERSION_GENERATED_H' > $@
 	echo '#define VERSION_GENERATED_H' >> $@
-	echo '#include "config.h"' >> $@
 	echo '#define PDNS_VERSION VERSION' >> $@
 	echo '#define BUILD_DATE "$(build_date)"' >> $@
 	echo '#define BUILD_HOST "$(build_host)"' >> $@
+	echo '#define DIST_HOST "$(build_host)"' >> $@
 	echo '#endif //!VERSION_GENERATED_H' >> $@
 
 message: 
@@ -90,16 +92,27 @@ basic_checks:
 	 fi
 
 install: build-stamp
-	-mkdir -p $(DESTDIR)/$(SBINDIR)
-	mv pdns_recursor $(DESTDIR)/$(SBINDIR)
-	strip $(DESTDIR)/$(SBINDIR)/pdns_recursor
-	mkdir -p $(DESTDIR)/$(BINDIR)
-	mv rec_control $(DESTDIR)/$(BINDIR)
-	strip $(DESTDIR)/$(BINDIR)/rec_control
-	-mkdir -p $(DESTDIR)/$(SYSCONFDIR)
-	$(DESTDIR)/$(SBINDIR)/pdns_recursor --config > $(DESTDIR)/$(SYSCONFDIR)/recursor.conf-dist
-	-mkdir -p $(DESTDIR)/usr/share/man/man1
-	cp pdns_recursor.1 rec_control.1 $(DESTDIR)/usr/share/man/man1
+	-mkdir -p $(SBINDIR)
+	cp pdns_recursor $(SBINDIR)
+	strip $(SBINDIR)/pdns_recursor
+	mkdir -p $(BINDIR)
+	cp rec_control $(BINDIR)
+	strip $(BINDIR)/rec_control
+	-mkdir -p $(SYSCONFDIR)
+	$(SBINDIR)/pdns_recursor --config > $(SYSCONFDIR)/recursor.conf-dist
+	-mkdir -p $(DESTDIR)usr/share/man/man1
+	cp $(DOCDIR)/pdns_recursor.1 $(DOCDIR)/rec_control.1 $(DESTDIR)usr/share/man/man1
+	$(OS_SPECIFIC_INSTALL)	
+
+debug-install: build-stamp
+	-mkdir -p $(SBINDIR)
+	cp pdns_recursor $(SBINDIR)
+	mkdir -p $(BINDIR)
+	cp rec_control $(BINDIR)
+	-mkdir -p $(SYSCONFDIR)
+	$(SBINDIR)/pdns_recursor --config > $(SYSCONFDIR)/recursor.conf-dist
+	-mkdir -p $(DESTDIR)usr/share/man/man1
+	cp $(DOCDIR)/pdns_recursor.1 $(DOCDIR)/rec_control.1 $(DESTDIR)usr/share/man/man1
 	$(OS_SPECIFIC_INSTALL)	
 
 clean: binclean

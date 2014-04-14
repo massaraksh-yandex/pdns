@@ -304,17 +304,18 @@ class MOADNSParser : public boost::noncopyable
 {
 public:
   //! Parse from a string
-  MOADNSParser(const string& buffer)  : d_tsigPos(0)
+  MOADNSParser(const string& buffer)  : d_len(buffer.size()), d_tsigPos(0)
   {
     init(buffer.c_str(), (unsigned int)buffer.size());
   }
 
   //! Parse from a pointer and length
-  MOADNSParser(const char *packet, unsigned int len) : d_tsigPos(0)
+  MOADNSParser(const char *packet, unsigned int len) : d_len(len), d_tsigPos(0)
   {
     init(packet, len);
   }
 
+  unsigned int d_len;
   dnsheader d_header;
   string d_qname;
   uint16_t d_qclass, d_qtype;
