@@ -61,6 +61,9 @@ public:
    */
   void commit();
 
+  /** Discard all content except the question section. Backported from commit e99e494dceccebfc9c20d9fa8a57e41f521e2ac8*/
+  void truncate();
+
   uint32_t size(); // needs to be 32 bit because otherwise we don't see the wrap coming when it happened!
 
   /** Should the packet have grown too big for the writer's liking, rollback removes the record currently being written */
@@ -121,6 +124,7 @@ private:
   uint16_t d_stuff;
   uint16_t d_sor;
   uint16_t d_rollbackmarker; // start of last complete packet, for rollback
+  uint16_t d_truncatemarker; // end of header, for truncate
   Place d_recordplace;
   bool d_canonic, d_lowerCase;
 };
