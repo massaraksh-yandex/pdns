@@ -23,6 +23,7 @@
 #include <map>
 #include <ctime>
 #include <iostream>
+#include <fstream>
 #include <sstream>
 #include "config.h"
 #ifndef WIN32
@@ -98,7 +99,7 @@ public:
   void setLoglevel( Urgency );
 
   //! Log to a file.
-  void toFile( const string & filename );
+  bool toFile( const string & filename );
   
   void resetFlags(){flags=0;open();} //!< zero the flags
   /** Use this to stream to your log, like this:
@@ -135,6 +136,7 @@ private:
   Urgency d_loglevel;
   Urgency consoleUrgency;
   pthread_mutex_t lock;
+  std::ofstream fout;
 };
 
 extern Logger &theL(const string &pname="");
