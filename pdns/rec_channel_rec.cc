@@ -6,6 +6,7 @@
 #include "misc.hh"
 #include "recursor_cache.hh"
 #include "syncres.hh"
+#include "rrliptable.hh"
 #include <boost/function.hpp>
 #include <boost/optional.hpp>
 #include <boost/tuple/tuple.hpp>
@@ -605,7 +606,9 @@ string RecursorControlParser::getAnswer(const string& question, RecursorControlP
 "trace-regex regex                emit resolution trace for matching queries\n"
 "top-remotes                      show top remotes\n"
 "unload-lua-script                unload Lua script\n"
-"wipe-cache domain0 [domain1] ..  wipe domain data from cache\n";
+"wipe-cache domain0 [domain1] ..  wipe domain data from cache\n"
+"reload-rrl-white-list            reload file with nodes which are ignored by rrl"
+"reload-rrl-special-limits        reload file with special limits which are applied for selected addresses";
 
   if(cmd=="get-all")
     return getAllStats();
@@ -684,6 +687,14 @@ string RecursorControlParser::getAnswer(const string& question, RecursorControlP
   
   if(cmd=="get-qtypelist") {
     return g_rs.getQTypeReport();
+  }
+
+  if(cmd=="reload-rrl-white-list") {
+    return rrlIpTable().reloadWhiteList();
+  }
+
+  if(cmd=="reload-rrl-special-limits") {
+    return rrlIpTable().reloadSpecialLimits();
   }
   
   return "Unknown command '"+cmd+"', try 'help'\n";
