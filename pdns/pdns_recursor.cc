@@ -616,7 +616,7 @@ void startDoResolve(void *p)
           );
       }
 
-      RrlNode node = rrlIpTable().getNode(dc->d_remote);
+      RrlNode node = rrlIpTable().getNode(dc->d_remote, false);
 
       bool blocked = false;
       if (!node.isInWhiteList) {
@@ -2170,6 +2170,13 @@ int main(int argc, char **argv)
     ::arg().set("rrl-white-list", "") = "Path to white list";
     ::arg().setSwitch("rrl-enable-special-limits", "Enable special conditions for some addresses")  = "no";
     ::arg().set("rrl-special-limits", "Path to file with special limits") = "";
+    ::arg().set("rrl-cleaning-mode","The way to clean rrl nodes cache. Possible values: none, larger-than, remove-old") = "none";
+    ::arg().set("rrl-clean-remove-if-larger","Only if rrl-cleaning-mode == larger-than. If rrl cache size is bigger than this value, the cleaning will been started") = "10000";
+    ::arg().set("rrl-clean-remove-n-nodes","Only if rrl-cleaning-mode == larger-than. This value sets percentage of nodes that will be removed") = "10";
+    ::arg().set("rrl-clean-remove-every-n-request","Only if rrl-cleaning-mode == remove-old. Every n-th request the cleaning will been started") = "1000";
+    ::arg().set("rrl-clean-remove-if-older","Only if rrl-cleaning-mode == remove-old"
+                  "If the difference between current second and the last request value from node's ip "
+                  "address is larger than this value, the node will be erased") = "86400";
 
     ::arg().setCmd("help","Provide a helpful message");
     ::arg().setCmd("version","Print version string ("VERSION")");
