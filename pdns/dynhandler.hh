@@ -25,7 +25,7 @@
 #include <sys/types.h>
 
 #ifndef WIN32
-# include "config.h"
+# include "config-recursor.h"
 # include <unistd.h>
 #else
 # include "pdnsservice.hh"

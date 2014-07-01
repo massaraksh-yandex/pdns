@@ -6,7 +6,7 @@
 #include "misc.hh"
 #include "recursor_cache.hh"
 #include "syncres.hh"
-#include "rrliptable.hh"
+#include "rrl.hh"
 #include <boost/function.hpp>
 #include <boost/optional.hpp>
 #include <boost/tuple/tuple.hpp>
@@ -608,8 +608,14 @@ string RecursorControlParser::getAnswer(const string& question, RecursorControlP
 "top-remotes                      show top remotes\n"
 "unload-lua-script                unload Lua script\n"
 "wipe-cache domain0 [domain1] ..  wipe domain data from cache\n"
+#ifdef WITH_RRL
 "reload-rrl-white-list            reload file with nodes which are ignored by rrl"
-"reload-rrl-special-limits        reload file with special limits which are applied for selected addresses";
+"reload-rrl-special-limits        reload file with special limits which are applied for selected addresses\n"
+"set-rrl-mode [mode]              switches rrl modes\n"
+"get-rrl-information              shows information about rrl\n";
+#else
+  ;
+#endif // WITH_RRL
 
   if(cmd=="get-all")
     return getAllStats();
@@ -671,7 +677,6 @@ string RecursorControlParser::getAnswer(const string& question, RecursorControlP
     return "ok\n";
   }
 
-
   if(cmd=="top-remotes")
     return doTopRemotes();
 
@@ -685,11 +690,8 @@ string RecursorControlParser::getAnswer(const string& question, RecursorControlP
   if(cmd=="reload-zones") {
     return reloadAuthAndForwards();
   }
-  
-  if(cmd=="get-qtypelist") {
-    return g_rs.getQTypeReport();
-  }
 
+#ifdef WITH_RRL
   if(cmd=="reload-rrl-white-list") {
     return rrlIpTable().reloadWhiteList();
   }
@@ -697,6 +699,15 @@ string RecursorControlParser::getAnswer(const string& question, RecursorControlP
   if(cmd=="reload-rrl-special-limits") {
     return rrlIpTable().reloadSpecialLimits();
   }
+
+  if(cmd=="set-rrl-mode") {
+    return rrlIpTable().setRrlMode(begin, end);
+  }
+
+  if(cmd=="get-rrl-information") {
+    return rrlIpTable().information();
+  }
+#endif // WITH_RRL
   
   return "Unknown command '"+cmd+"', try 'help'\n";
 }

@@ -19,7 +19,7 @@
 #include <iostream>
 #include "ahuexception.hh"
 #include "arguments.hh"
-#include "config.h"
+#include "config-recursor.h"
 
 #include "namespaces.hh"
 
