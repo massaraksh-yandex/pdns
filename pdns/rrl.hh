@@ -1,0 +1,45 @@
+#ifndef RRLIPTABLE_H
+#define RRLIPTABLE_H
+
+#include "config-recursor.h"
+#ifdef WITH_RRL
+
+#include "rrl_structures.hh"
+#include <boost/shared_ptr.hpp>
+#include <string>
+
+namespace Rrl {
+void cleanRrlCache(void*);
+class RrlIpTableImpl;
+}
+
+class RrlIpTable
+{
+  friend class RrlNode;
+  friend void Rrl::cleanRrlCache(void*);
+  boost::shared_ptr<Rrl::RrlIpTableImpl> d_impl;
+  pthread_mutex_t   d_lock;
+
+public:
+  RrlIpTable();
+
+  RrlNode getNode(const ComboAddress& addr, bool isAloneThread);
+
+  bool dropQueries() const;
+  bool enabled() const;
+
+  bool timeToClean() const;
+
+  std::string reloadWhiteList();
+  std::string reloadSpecialLimits();
+  std::string setRrlMode(std::vector<std::string>::const_iterator begin, std::vector<std::string>::const_iterator end);
+  std::string information() const;
+};
+
+inline RrlIpTable& rrlIpTable() {
+    static RrlIpTable table;
+    return table;
+}
+#endif // WITH_RRL
+
+#endif // RRLIPTABLE_H

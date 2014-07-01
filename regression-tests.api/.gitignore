@@ -1,0 +1,10 @@
+/.venv
+/*.xml
+/*.pid
+/pdns.sqlite3
+/*.controlsocket
+/named.conf
+/*.pyc
+acl.conf
+recursor.conf
+rec-conf.d

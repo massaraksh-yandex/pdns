@@ -41,7 +41,7 @@
 #include <fstream>
 #include <boost/algorithm/string.hpp>
 
-#include "config.h"
+#include "config-recursor.h"
 #include "dns.hh"
 #include "dnsbackend.hh"
 #include "ueberbackend.hh"
