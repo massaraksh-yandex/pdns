@@ -63,11 +63,11 @@
 #include "logger.hh"
 #include "iputils.hh"
 #include "mplexer.hh"
-#include "config.h"
+#include "config-recursor.h"
 #include "lua-recursor.hh"
 #include "version.hh"
 #include "responsestats.hh"
-#include "rrliptable.hh"
+#include "rrl.hh"
 
 #ifndef RECURSOR
 #include "statbag.hh"
@@ -637,21 +637,19 @@ void startDoResolve(void *p)
           );
       }
 
-      RrlNode node = rrlIpTable().getNode(dc->d_remote, false);
+#ifdef WITH_RRL
+      RrlNode node = rrlIpTable().getNode(dc->d_remote, true);
+      node.update((double)packet.size() / dc->d_mdp.d_len);
+      node.update(QType(dc->d_mdp.d_qtype));
 
-      bool blocked = false;
-      if (!node.isInWhiteList) {
-        bool blockByRatio = rrlIpTable().updateRecord(node, (double)packet.size() / dc->d_mdp.d_len);
-        bool blockByType  = rrlIpTable().updateRecord(node, QType(dc->d_mdp.d_qtype));
-        blocked = blockByType || blockByRatio;
-
-        if (blocked) {
-            pw.getHeader()->tc = 1;
-            pw.truncate();
-        }
+      if (node.blocked()) {
+          pw.getHeader()->tc = 1;
+          pw.truncate();
       }
 
-      if (!(blocked && rrlIpTable().dropQueries())) {
+      if (!rrlIpTable().dropQueries())
+#endif
+      {
           sendto(dc->d_socket, (const char*)&*packet.begin(), packet.size(), 0, (struct sockaddr *)(&dc->d_remote), dc->d_remote.getSocklen());
       }
     }
@@ -882,7 +880,7 @@ void handleNewTCPQuestion(int fd, FDMultiplexer::funcparam_t& )
   }
 }
  
-string* doProcessUDPQuestion(const std::string& question, const ComboAddress& fromaddr, int fd, RrlNode rrlNode)
+string* doProcessUDPQuestion(const std::string& question, const ComboAddress& fromaddr, int fd)
 {
   ++g_stats.qcounter;
   if(fromaddr.sin4.sin_family==AF_INET6)
@@ -898,15 +896,13 @@ string* doProcessUDPQuestion(const std::string& question, const ComboAddress& fr
 
       g_stats.packetCacheHits++;
       SyncRes::s_queries++;
+#ifdef WITH_RRL
+      RrlNode rrlNode = rrlIpTable().getNode(fromaddr, false);
 
-      // TEST answer from cache
-      bool blocked = false;
-      if (!rrlNode.isInWhiteList) {
-        bool blockByType  = rrlIpTable().updateRecord(rrlNode, QType(dc->d_mdp.d_qtype));
-        bool blockByRatio = rrlIpTable().updateRecord(rrlNode, (double)response.size() / question.size());
-        blocked = blockByType || blockByRatio;
+      rrlNode.update((double)response.size() / question.size());
+      rrlNode.update(QType(dc->d_mdp.d_qtype));
 
-        if (blocked) {
+      if (rrlNode.blocked()) {
           vector<uint8_t> packet;
           DNSPacketWriter pw(packet, dc->d_mdp.d_qname, dc->d_mdp.d_qtype, dc->d_mdp.d_qclass);
 
@@ -918,14 +914,15 @@ string* doProcessUDPQuestion(const std::string& question, const ComboAddress& fr
           pw.getHeader()->rd=dc->d_mdp.d_header.rd;
           pw.truncate();
           response = string((const char*)&*packet.begin(), packet.size());
-        }
+      }
+
+      if (!rrlIpTable().dropQueries())
+#endif
+      {
+          sendto(fd, response.c_str(), response.length(), 0, (struct sockaddr*) &fromaddr, fromaddr.getSocklen());
       }
 
       ageDNSPacket(response, age);
-
-      if (!(blocked && rrlIpTable().dropQueries())) {
-          sendto(fd, response.c_str(), response.length(), 0, (struct sockaddr*) &fromaddr, fromaddr.getSocklen());
-      }
 
       if(response.length() >= sizeof(struct dnsheader)) {
         struct dnsheader dh;
@@ -985,16 +982,10 @@ void handleNewUDPQuestion(int fd, FDMultiplexer::funcparam_t& var)
       else {
         string question(data, len);
 
-        // TEST blocking
-        RrlNode node = rrlIpTable().getNode(fromaddr);
-        rrlIpTable().decreaseCounters(node);
-        if(node.blocked() && rrlIpTable().dropQueries())
-          return;
-
         if(g_weDistributeQueries)
-          distributeAsyncFunction(boost::bind(doProcessUDPQuestion, question, fromaddr, fd, node));
+          distributeAsyncFunction(boost::bind(doProcessUDPQuestion, question, fromaddr, fd));
         else
-          doProcessUDPQuestion(question, fromaddr, fd, node);
+          doProcessUDPQuestion(question, fromaddr, fd);
       }
     }
     catch(MOADNSException& mde) {
@@ -2037,6 +2028,11 @@ try
     if(!(counter%500)) {
       MT->makeThread(houseKeeping, 0);
     }
+#ifdef WITH_RRL
+    if(rrlIpTable().timeToClean()) {
+        MT->makeThread(Rrl::cleanRrlCache, 0);
+    }
+#endif
 
     if(!(counter%55)) {
       typedef vector<pair<int, FDMultiplexer::funcparam_t> > expired_t;
@@ -2178,7 +2174,7 @@ int main(int argc, char **argv)
 
     ::arg().set("include-dir","Include *.conf files from this directory")="";
 
-    ::arg().setSwitch("rrl-enable", "Enable RRL functionality")  = "no";
+    ::arg().set("rrl-mode", "This parameter tells how the rrl module will action. Possible values: off: rrl module is inactive. truncate: suspicious requests will be truncated. block: suspicious requests will be blocked and there will be no answer. log-only: locking actions will be logged, but all requests will be answered as usual")  = "off";
     ::arg().set("rrl-ipv4-prefix-length", "Significant bits in IPv4 address") = "24";
     ::arg().set("rrl-ipv6-prefix-length", "Significant bits in IPv4 address") = "56";
     ::arg().set("rrl-types", "\'Type Filter\'. Requests with this types are significant") = "ANY,RRSIG";
@@ -2187,20 +2183,20 @@ int main(int argc, char **argv)
     ::arg().set("rrl-limit-ratio-count", "Count of requests with ratio from rrl-ratio. When the number of such requests exceed this value, the IP-address will be blocked.") = "50";
     ::arg().set("rrl-detection-period", "Time in milliseconds for increasing Filters\' counters. At the end of this period counters are decreased.") = "10";
     ::arg().set("rrl-blocking-period", "If any filter\'s condition are true, the IP-address will be blocked for this time (in ms)") = "20";
-    ::arg().set("rrl-drop-requests", "If yes, the requests from blocked address are dropped. Otherwise, the requests are truncated")  = "no";
     ::arg().setSwitch("rrl-enable-log-file", "Log blocking actions to file")  = "no";
-    ::arg().set("rrl-log-file", "") = "Path for log file";
+    ::arg().setSwitch("rrl-enable-extra-logging", "Extra logging messages")  = "no";
+    ::arg().set("rrl-log-file", "Path for log file") = "";
     ::arg().setSwitch("rrl-enable-white-list", "Enable list of addresses, which cannot be blocked")  = "no";
-    ::arg().set("rrl-white-list", "") = "Path to white list";
+    ::arg().set("rrl-white-list", "Path to white list") = "";
     ::arg().setSwitch("rrl-enable-special-limits", "Enable special conditions for some addresses")  = "no";
     ::arg().set("rrl-special-limits", "Path to file with special limits") = "";
-    ::arg().set("rrl-cleaning-mode","The way to clean rrl nodes cache. Possible values: none, larger-than, remove-old") = "none";
+    ::arg().set("rrl-cleaning-mode","The way to clean rrl nodes cache. Possible values: off, larger-than, remove-old") = "off";
     ::arg().set("rrl-clean-remove-if-larger","Only if rrl-cleaning-mode == larger-than. If rrl cache size is bigger than this value, the cleaning will been started") = "10000";
-    ::arg().set("rrl-clean-remove-n-nodes","Only if rrl-cleaning-mode == larger-than. This value sets percentage of nodes that will be removed") = "10";
+    ::arg().set("rrl-clean-remove-n-percent-nodes","Only if rrl-cleaning-mode == larger-than. This value sets percentage of nodes that will be removed") = "10";
     ::arg().set("rrl-clean-remove-every-n-request","Only if rrl-cleaning-mode == remove-old. Every n-th request the cleaning will been started") = "1000";
     ::arg().set("rrl-clean-remove-if-older","Only if rrl-cleaning-mode == remove-old"
-                  "If the difference between current second and the last request value from node's ip "
-                  "address is larger than this value, the node will be erased") = "86400";
+                    "If the difference between current second and the last request value from node's ip "
+                    "address is larger than this value, the node will be erased") = "86400";
 
     ::arg().setCmd("help","Provide a helpful message");
     ::arg().setCmd("version","Print version string");

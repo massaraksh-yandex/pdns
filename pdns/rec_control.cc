@@ -23,7 +23,7 @@
 #include <iostream>
 #include "pdnsexception.hh"
 #include "arguments.hh"
-#include "config.h"
+#include "config-recursor.h"
 
 #include "namespaces.hh"
 

@@ -29,8 +29,8 @@
 #include <iostream>
 #include <fstream>
 #include <sstream>
-#include "config.h"
 #include <syslog.h>
+#include "config-recursor.h"
 #include <pthread.h>
 
 #include "namespaces.hh"

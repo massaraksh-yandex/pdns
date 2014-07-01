@@ -24,7 +24,7 @@
 #include "namespaces.hh"
 #include "ws-api.hh"
 #include "json.hh"
-#include "config.h"
+#include "config-recursor.h"
 #include "version.hh"
 #include "arguments.hh"
 #include <stdio.h>

@@ -4,7 +4,7 @@
 #include "dnswriter.hh"
 #include "dnsrecords.hh"
 #include <boost/format.hpp>
-#include "config.h"
+#include "config-recursor.h"
 #ifndef RECURSOR
 #include "statbag.hh"
 StatBag S;

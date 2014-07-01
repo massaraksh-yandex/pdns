@@ -11,7 +11,7 @@
 #include "namespaces.hh"
 #include "namespaces.hh"
 
-#include "config.h"
+#include "config-recursor.h"
 
 DNSResourceRecord String2DNSRR(const string& qname, const QType& qt, const string& serial, uint32_t ttd)
 {

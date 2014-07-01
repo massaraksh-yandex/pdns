@@ -38,7 +38,7 @@
 #include "misc.hh"
 #include "dynmessenger.hh"
 #include "arguments.hh"
-#include "config.h"
+#include "config-recursor.h"
 #include "statbag.hh"
 #include "misc.hh"
 #include "namespaces.hh"

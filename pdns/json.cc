@@ -5,6 +5,9 @@
 #include "rapidjson/document.h"
 #include "rapidjson/stringbuffer.h"
 #include "rapidjson/writer.h"
+#include "config-recursor.h"
+
+//#ifndef HAVE_STRCASESTR
 
 using namespace rapidjson;
 
