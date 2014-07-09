@@ -4,9 +4,8 @@ set -e
 
 ragel dnslabeltext.rl -o dnslabeltext.cc
 
-VERSION=rrl-implementation
 ## The following lines will be patched by set-version-recursor.
-VERSION=""
+VERSION="rrl-implementation"
 DIST_HOST=""
 ## End patch area.
 
