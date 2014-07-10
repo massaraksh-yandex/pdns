@@ -608,8 +608,8 @@ string RecursorControlParser::getAnswer(const string& question, RecursorControlP
 "unload-lua-script                unload Lua script\n"
 "wipe-cache domain0 [domain1] ..  wipe domain data from cache\n"
 #ifdef WITH_RRL
-"reload-rrl-white-list            reload file with nodes which are ignored by rrl"
-"reload-rrl-special-limits        reload file with special limits which are applied for selected addresses\n"
+"reload-rrl-white-list [path]     reload file with nodes which are ignored by rrl\n"
+"reload-rrl-special-limits [path] reload file with special limits which are applied for selected addresses\n"
 "set-rrl-mode [mode]              switches rrl modes\n"
 "get-rrl-information              shows information about rrl\n";
 #else
@@ -692,11 +692,11 @@ string RecursorControlParser::getAnswer(const string& question, RecursorControlP
 
 #ifdef WITH_RRL
   if(cmd=="reload-rrl-white-list") {
-    return rrlIpTable().reloadWhiteList();
+    return rrlIpTable().reloadWhiteList(begin, end);
   }
 
   if(cmd=="reload-rrl-special-limits") {
-    return rrlIpTable().reloadSpecialLimits();
+    return rrlIpTable().reloadSpecialLimits(begin, end);
   }
 
   if(cmd=="set-rrl-mode") {

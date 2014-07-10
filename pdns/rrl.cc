@@ -41,18 +41,32 @@ bool RrlIpTable::timeToClean() const
     return d_impl->timeToClean();
 }
 
-std::string RrlIpTable::reloadWhiteList() {
+std::string RrlIpTable::reloadWhiteList(std::vector<std::string>::const_iterator begin, std::vector<std::string>::const_iterator end) {
+    std::ostringstream str;
+    if((end - begin) != 1) {
+        str << "Trying to reload white list but passed wrong params list. size == " << (end - begin);
+        d_impl->log() << Logger::Alert << Rrl::RrlIpTableImpl::rrlMessageString << str.str() << std::endl;
+        return str.str() + "\n";
+    }
+
     Mutex mutex(d_lock);
     mutex.lock();
-    string res = d_impl->reloadWhiteList();
+    string res = d_impl->reloadWhiteList(*begin);
 
     return res;
 }
 
-std::string RrlIpTable::reloadSpecialLimits() {
+std::string RrlIpTable::reloadSpecialLimits(std::vector<std::string>::const_iterator begin, std::vector<std::string>::const_iterator end) {
+    std::ostringstream str;
+    if((end - begin) != 1) {
+        str << "Trying to reload special limits but passed wrong params list. size == " << (end - begin);
+        d_impl->log() << Logger::Alert << Rrl::RrlIpTableImpl::rrlMessageString << str.str() << std::endl;
+        return str.str() + "\n";
+    }
+
     Mutex mutex(d_lock);
     mutex.lock();
-    string res = d_impl->reloadSpecialLimits();
+    string res = d_impl->reloadSpecialLimits(*begin);
 
     return res;
 }

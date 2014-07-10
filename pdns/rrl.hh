@@ -30,8 +30,8 @@ public:
 
   bool timeToClean() const;
 
-  std::string reloadWhiteList();
-  std::string reloadSpecialLimits();
+  std::string reloadWhiteList(std::vector<std::string>::const_iterator begin, std::vector<std::string>::const_iterator end);
+  std::string reloadSpecialLimits(std::vector<std::string>::const_iterator begin, std::vector<std::string>::const_iterator end);
   std::string setRrlMode(std::vector<std::string>::const_iterator begin, std::vector<std::string>::const_iterator end);
   std::string information() const;
 };
