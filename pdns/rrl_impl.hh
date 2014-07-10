@@ -86,8 +86,8 @@ public:
   bool dropQueries() const { return d_mode.type == Mode::Block; }
   bool enabled() const { return d_mode.type != Mode::Off; }
 
-  string reloadWhiteList();
-  string reloadSpecialLimits();
+  string reloadWhiteList(const std::string &pathToFile);
+  string reloadSpecialLimits(const std::string &pathToFile);
   string information() const;
 
   static string rrlMessageString;

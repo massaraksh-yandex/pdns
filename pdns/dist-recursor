@@ -47,9 +47,10 @@ cp -a ext/polarssl-1.3.2/library/*.c $DIRNAME/ext/polarssl-1.3.2/library/
 mkdir $DIRNAME/rrd
 cp tools/rrd/{create,update,makegraphs,index.html} $DIRNAME/rrd
 mkdir -p $DIRNAME/aes
-cp aes/*.{c,cc,h} $DIRNAME/aes
+cp -f aes/*.{c,h} $DIRNAME/aes
 cp pdns-recursor.init.d $DIRNAME
-cp docs/pdns_recursor.1 docs/rec_control.1 $DIRNAME
+mkdir -p $DIRNAME/docs
+cp docs/pdns_recursor.1 docs/rec_control.1 $DIRNAME/docs
 cp configure-recursor $DIRNAME/configure
 cp powerdns-example-script.lua $DIRNAME
 mkdir -p $DIRNAME/contrib
