@@ -302,7 +302,7 @@ bool RrlIpTableImpl::tryBlock(RrlNode node)
         }
         log() << std::endl;
 
-        Time rtime =  boost::posix_time::microsec_clock::local_time();
+        Time rtime = boost::posix_time::microsec_clock::local_time();
         iter->block_till = rtime +
                 boost::posix_time::milliseconds(node.limit.blocking_time);
     }
@@ -413,7 +413,7 @@ void RrlIpTableImpl::cleanRrlNodes()
             d_request_counter = 0;
             for(RrlMap::iterator it = d_data.begin(); it != d_data.end();) {
                 Time border = boost::posix_time::microsec_clock::local_time() -
-                        boost::posix_time::seconds(d_cleaning.remove_if_older);
+                        boost::posix_time::milliseconds(d_cleaning.remove_if_older);
 
                 if(!it->second->block_till.is_not_a_date_time() && it->second->block_till < now()) {
                     it->second->blocked = false;
@@ -492,7 +492,7 @@ void RrlIpTableImpl::parseRequestTypes(const string &str, std::set<QType> &types
     }
 }
 
-string RrlIpTableImpl::reloadWhiteList()
+string RrlIpTableImpl::reloadWhiteList(const std::string& pathToFile)
 {
     if(!enabled()) {
         log() << Logger::Alert << rrlMessageString << "Trying to reload rrl white list while rrl is disabled" << std::endl;
@@ -504,7 +504,7 @@ string RrlIpTableImpl::reloadWhiteList()
         return "White list is disabled by configuration\n";
     }
 
-    string answer = parseWhiteList(::arg()["rrl-white-list"]);
+    string answer = parseWhiteList(pathToFile);
 
     if(!answer.empty()) {
         return answer;
@@ -515,7 +515,7 @@ string RrlIpTableImpl::reloadWhiteList()
     }
 }
 
-string RrlIpTableImpl::reloadSpecialLimits()
+string RrlIpTableImpl::reloadSpecialLimits(const std::string &pathToFile)
 {
     if(!enabled()) {
         log() << Logger::Alert << rrlMessageString << "Trying to reload rrl special limits while rrl is disabled" << std::endl;
@@ -527,7 +527,7 @@ string RrlIpTableImpl::reloadSpecialLimits()
         return "Special limits are disabled by configuration\n";
     }
 
-    string answer = parseLimitFile(::arg()["rrl-special-limits"]);
+    string answer = parseLimitFile(pathToFile);
 
     if(!answer.empty()) {
         return answer;

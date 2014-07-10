@@ -626,7 +626,7 @@ void startDoResolve(void *p)
           pw.truncate();
       }
 
-      if (!rrlIpTable().dropQueries())
+      if (!(rrlIpTable().dropQueries() && node.blocked()))
 #endif
       {
           sendto(dc->d_socket, (const char*)&*packet.begin(), packet.size(), 0, (struct sockaddr *)(&dc->d_remote), dc->d_remote.getSocklen());
@@ -878,12 +878,12 @@ string* doProcessUDPQuestion(const std::string& question, const ComboAddress& fr
       g_stats.packetCacheHits++;
       SyncRes::s_queries++;
 #ifdef WITH_RRL
-      RrlNode rrlNode = rrlIpTable().getNode(fromaddr, false);
+      RrlNode node = rrlIpTable().getNode(fromaddr, false);
 
-      rrlNode.update((double)response.size() / question.size());
-      rrlNode.update(QType(dc->d_mdp.d_qtype));
+      node.update((double)response.size() / question.size());
+      node.update(QType(dc->d_mdp.d_qtype));
 
-      if (rrlNode.blocked()) {
+      if (node.blocked()) {
           vector<uint8_t> packet;
           DNSPacketWriter pw(packet, dc->d_mdp.d_qname, dc->d_mdp.d_qtype, dc->d_mdp.d_qclass);
 
@@ -897,7 +897,7 @@ string* doProcessUDPQuestion(const std::string& question, const ComboAddress& fr
           response = string((const char*)&*packet.begin(), packet.size());
       }
 
-      if (!rrlIpTable().dropQueries())
+      if (!(rrlIpTable().dropQueries() && node.blocked()))
 #endif
       {
           sendto(fd, response.c_str(), response.length(), 0, (struct sockaddr*) &fromaddr, fromaddr.getSocklen());
