@@ -80,14 +80,14 @@ string Mode::toString(Mode mode)
 
 RrlIpTableImpl::RrlIpTableImpl() :
     d_locked_nodes(0), d_limits_enabled(false), d_white_list_enabled(false),
-    d_extra_logging(false)
+    d_extra_logging(false), d_messages(this)
 {
     initialize(true, Mode::Off);
 }
 
 RrlIpTableImpl::RrlIpTableImpl(Mode mode) :
     d_locked_nodes(0), d_limits_enabled(false), d_white_list_enabled(false),
-    d_extra_logging(false)
+    d_extra_logging(false), d_messages(this)
 {
     initialize(false, mode);
 }
@@ -173,7 +173,7 @@ SingleLimit RrlIpTableImpl::initDefaulLimits()
     return defaultLimits;
 }
 
-Logger &RrlIpTableImpl::log()
+Logger& RrlIpTableImpl::log()
 {
     return d_logger ? *d_logger : theL();
 }
@@ -183,15 +183,34 @@ void RrlIpTableImpl::setMode(Mode mode)
     d_mode = mode;
 }
 
-void RrlIpTableImpl::showReleasedMessage(const std::string& address, const std::string& netmask)
+string RrlIpTableImpl::showReleasedMessage(std::string address, std::string netmask)
 {
-    log() << Logger::Info << rrlReleasedString << " address:" << address << " netmask:" << netmask << std::endl;
+    std::ostringstream stream;
+    stream << Logger::Info << rrlReleasedString;
+
+    if(netmask.empty())
+         stream << rrlReleasedCleaning;
+
+    stream << " address:" << address;
+
+    if(netmask.empty())
+        stream << " netmask:" << netmask;
+
+    return stream.str();
 }
 
-void RrlIpTableImpl::showReleasedMessage(const std::string& address)
+string RrlIpTableImpl::showLockedMessage(RrlNode node)
 {
-    log() << Logger::Info << rrlReleasedString << rrlReleasedCleaning
-          << " address:" << address << std::endl;
+    std::ostringstream stream;
+    stream << Logger::Info << rrlLockedString << " address:"
+           << node.address.toString() << " netmask:" << node.limit.netmask.toString();
+    if(d_extra_logging) {
+        stream << "; Ratio-requests counter: " << node.node->counter_ratio
+               << "; Type-requests counter: " << node.node->counter_types
+               << "; Ratio limit: " << node.limit.limit_ratio_number
+               << "; Types limit: " << node.limit.limit_types_number;
+    }
+    return stream.str();
 }
 
 RrlMap::iterator RrlIpTableImpl::get(const ComboAddress &addr)
@@ -239,7 +258,7 @@ bool RrlIpTableImpl::decreaseCounters(RrlNode& node)
     if(!tryBlock(node)) {
         if (rin.blocked) {
             d_locked_nodes--;
-            showReleasedMessage(node.address.toString(), node.limit.netmask.toString());
+            log() << showReleasedMessage(node.address.toString(), node.limit.netmask.toString()) << endl;
         }
         rin.blocked = false;
     }
@@ -270,7 +289,7 @@ RrlNode RrlIpTableImpl::getNode(const ComboAddress& addr)
         } else {
             rinp = i->second;
         }
-
+        rinp->last_request_time = now();
     }
     catch(std::exception& ex) {
         log() << Logger::Error << rrlErrorString << " " << ex.what() << std::endl;
@@ -292,15 +311,7 @@ bool RrlIpTableImpl::tryBlock(RrlNode node)
 
     if (res && !iter->blocked) {
         d_locked_nodes++;
-        log() << Logger::Info << rrlLockedString << " address:"
-              << node.address.toString() << " netmask:" << node.limit.netmask.toString();
-        if(d_extra_logging) {
-            log() << "; Ratio-requests counter: " << iter->counter_ratio
-                  << "; Type-requests counter: " << iter->counter_types
-                  << "; Ratio limit: " << node.limit.limit_ratio_number
-                  << "; Types limit: " << node.limit.limit_types_number;
-        }
-        log() << std::endl;
+        log() << showLockedMessage(node) << std::endl;
 
         Time rtime = boost::posix_time::microsec_clock::local_time();
         iter->block_till = rtime +
@@ -388,7 +399,7 @@ void RrlIpTableImpl::cleanRrlNodes()
             for(RrlMap::iterator it = d_data.begin(); it != d_data.end(); it++) {
                 if(!it->second->block_till.is_not_a_date_time() && it->second->block_till < now()) {
                     it->second->blocked = false;
-                    showReleasedMessage(it->first.toString());
+                    log() << showReleasedMessage(it->first.toString()) << endl;
                 }
 
                 queue.push(it);
@@ -417,7 +428,7 @@ void RrlIpTableImpl::cleanRrlNodes()
 
                 if(!it->second->block_till.is_not_a_date_time() && it->second->block_till < now()) {
                     it->second->blocked = false;
-                    showReleasedMessage(it->first.toString());
+                    log() << showReleasedMessage(it->first.toString()) << endl;
                 }
 
                 RrlMap::iterator i = it++;
@@ -550,6 +561,36 @@ string RrlIpTableImpl::information() const
         << "size of limits: " << d_limits.size() << '\n';
 
     return str.str();
+}
+
+string Messages::released(std::string address, std::string netmask)
+{
+    std::ostringstream stream;
+    stream << Logger::Info << impl.rrlReleasedString;
+
+    if(netmask.empty())
+         stream << impl.rrlReleasedCleaning;
+
+    stream << " address:" << address;
+
+    if(netmask.empty())
+        stream << " netmask:" << netmask;
+
+    return stream.str();
+}
+
+string Messages::locked(RrlNode node)
+{
+    std::ostringstream stream;
+    stream << Logger::Info << impl.rrlLockedString << " address:"
+           << node.address.toString() << " netmask:" << node.limit.netmask.toString();
+    if(impl.d_extra_logging) {
+        stream << "; Ratio-requests counter: " << node.node->counter_ratio
+               << "; Type-requests counter: " << node.node->counter_types
+               << "; Ratio limit: " << node.limit.limit_ratio_number
+               << "; Types limit: " << node.limit.limit_types_number;
+    }
+    return stream.str();
 }
 
 }

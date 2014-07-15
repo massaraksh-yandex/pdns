@@ -34,7 +34,17 @@ namespace Rrl {
 
 typedef std::map<Netmask, boost::shared_ptr<InternalNode> > RrlMap;
 
-class RrlIpTableImpl
+class RrlIpTableImpl;
+
+struct Messages {
+    RrlIpTableImpl& impl;
+    Messages(RrlIpTableImpl* im) : impl(*im) { }
+
+    string released(std::string address, std::string netmask = "");
+    string locked(RrlNode node);
+};
+
+struct RrlIpTableImpl
 {
   Mode   d_mode;
   u_int8_t  d_ipv4_prefix_length;
@@ -53,6 +63,8 @@ class RrlIpTableImpl
   boost::shared_ptr<Logger>           d_logger;
   bool              d_extra_logging;
 
+  Messages d_messages;
+
   Time now() const { return boost::posix_time::microsec_clock::local_time(); }
   RrlMap::iterator get(const ComboAddress& addr);
   Netmask truncateAddress(const ComboAddress& addr);
@@ -66,8 +78,8 @@ class RrlIpTableImpl
   void initCleaningMode();
   SingleLimit initDefaulLimits();
 
-  void showReleasedMessage(const std::string& address, const std::string& netmask);
-  void showReleasedMessage(const std::string& address);
+  string showReleasedMessage(std::string address, std::string netmask = "");
+  string showLockedMessage(RrlNode node);
 
 public:
   RrlIpTableImpl();
