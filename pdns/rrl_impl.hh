@@ -37,6 +37,12 @@ typedef std::map<Netmask, boost::shared_ptr<InternalNode> > RrlMap;
 class RrlIpTableImpl;
 
 struct Messages {
+    static string rrlMessageString;
+    static string rrlErrorString;
+    static string rrlLockedString;
+    static string rrlReleasedString;
+    static string rrlReleasedCleaning;
+
     RrlIpTableImpl& impl;
     Messages(RrlIpTableImpl* im) : impl(*im) { }
 
@@ -101,12 +107,6 @@ public:
   string reloadWhiteList(const std::string &pathToFile);
   string reloadSpecialLimits(const std::string &pathToFile);
   string information() const;
-
-  static string rrlMessageString;
-  static string rrlErrorString;
-  static string rrlLockedString;
-  static string rrlReleasedString;
-  static string rrlReleasedCleaning;
 };
 }
 #endif // WITH_RRL

@@ -40,11 +40,11 @@ struct SortRrlNodes : std::binary_function<RrlMap::iterator, RrlMap::iterator, b
     { return first->second->last_request_time < second->second->last_request_time; }
 };
 
-string RrlIpTableImpl::rrlMessageString    = "[message]";
-string RrlIpTableImpl::rrlErrorString      = "[error]";
-string RrlIpTableImpl::rrlLockedString     = "[locked]";
-string RrlIpTableImpl::rrlReleasedString   = "[released]";
-string RrlIpTableImpl::rrlReleasedCleaning = "[cleaning]";
+string Messages::rrlMessageString    = "[message]";
+string Messages::rrlErrorString      = "[error]";
+string Messages::rrlLockedString     = "[locked]";
+string Messages::rrlReleasedString   = "[released]";
+string Messages::rrlReleasedCleaning = "[cleaning]";
 
 
 Mode Mode::fromString(const string& str)
@@ -116,7 +116,7 @@ void RrlIpTableImpl::initialize(bool readStateFromConfig, Mode mode)
 
                 if (!d_logger->toFile(logName)) {
                     d_logger.reset();
-                    log() << Logger::Error << rrlErrorString << " Cannot logging rrl actions to file. Filename: " << logName << std::endl;
+                    log() << Logger::Error << d_messages.rrlErrorString << " Cannot logging rrl actions to file. Filename: " << logName << std::endl;
                 }
                 d_extra_logging = ::arg().mustDo("rrl-enable-extra-logging");
             }
@@ -128,8 +128,8 @@ void RrlIpTableImpl::initialize(bool readStateFromConfig, Mode mode)
             if(::arg().mustDo("rrl-enable-special-limits")) {
                 parseLimitFile(::arg()["rrl-special-limits"]);
             }
-            log() << Logger::Info << rrlMessageString << " mode: " << Mode::toString(d_mode) << std::endl;
-            log() << Logger::Info << rrlMessageString << " rrl is initialized" << std::endl;
+            log() << Logger::Info << d_messages.rrlMessageString << " mode: " << Mode::toString(d_mode) << std::endl;
+            log() << Logger::Info << d_messages.rrlMessageString << " rrl is initialized" << std::endl;
         }
     }
     catch (std::exception ex) {
@@ -258,7 +258,7 @@ bool RrlIpTableImpl::decreaseCounters(RrlNode& node)
     if(!tryBlock(node)) {
         if (rin.blocked) {
             d_locked_nodes--;
-            log() << showReleasedMessage(node.address.toString(), node.limit.netmask.toString()) << endl;
+            log() << d_messages.released(node.address.toString(), node.limit.netmask.toString()) << endl;
         }
         rin.blocked = false;
     }
@@ -311,7 +311,7 @@ bool RrlIpTableImpl::tryBlock(RrlNode node)
 
     if (res && !iter->blocked) {
         d_locked_nodes++;
-        log() << showLockedMessage(node) << std::endl;
+        log() << d_messages.locked(node) << std::endl;
 
         Time rtime = boost::posix_time::microsec_clock::local_time();
         iter->block_till = rtime +
@@ -399,7 +399,7 @@ void RrlIpTableImpl::cleanRrlNodes()
             for(RrlMap::iterator it = d_data.begin(); it != d_data.end(); it++) {
                 if(!it->second->block_till.is_not_a_date_time() && it->second->block_till < now()) {
                     it->second->blocked = false;
-                    log() << showReleasedMessage(it->first.toString()) << endl;
+                    log() << d_messages.released(it->first.toString()) << endl;
                 }
 
                 queue.push(it);
@@ -428,7 +428,7 @@ void RrlIpTableImpl::cleanRrlNodes()
 
                 if(!it->second->block_till.is_not_a_date_time() && it->second->block_till < now()) {
                     it->second->blocked = false;
-                    log() << showReleasedMessage(it->first.toString()) << endl;
+                    log() << d_messages.released(it->first.toString()) << endl;
                 }
 
                 RrlMap::iterator i = it++;
