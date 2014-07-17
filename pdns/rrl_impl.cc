@@ -79,15 +79,15 @@ string Mode::toString(Mode mode)
 }
 
 RrlIpTableImpl::RrlIpTableImpl() :
-    d_locked_nodes(0), d_limits_enabled(false), d_white_list_enabled(false),
-    d_messages(this)
+    d_locked_nodes(0), d_white_list_enabled(false),
+    d_messages(this), d_limits(this)
 {
     initialize(true, Mode::Off);
 }
 
 RrlIpTableImpl::RrlIpTableImpl(Mode mode) :
-    d_locked_nodes(0), d_limits_enabled(false), d_white_list_enabled(false),
-    d_messages(this)
+    d_locked_nodes(0), d_white_list_enabled(false),
+    d_messages(this), d_limits(this)
 {
     initialize(false, mode);
 }
@@ -108,14 +108,13 @@ void RrlIpTableImpl::initialize(bool readStateFromConfig, Mode mode)
             d_ipv6_prefix_length = ::arg().asNum("rrl-ipv6-prefix-length");
 
             initCleaningMode();
-            d_limits.push_back(initDefaulLimits());
 
             if (::arg().mustDo("rrl-enable-white-list")) {
                 parseWhiteList(::arg()["rrl-white-list"]);
             }
 
             if(::arg().mustDo("rrl-enable-special-limits")) {
-                parseLimitFile(::arg()["rrl-special-limits"]);
+                d_limits.init(::arg()["rrl-special-limits"]);
             }
             d_messages.info("mode: " + Mode::toString(d_mode));
             d_messages.info("rl is initialized");
@@ -146,7 +145,7 @@ void RrlIpTableImpl::initCleaningMode()
     }
 }
 
-SingleLimit RrlIpTableImpl::initDefaulLimits()
+SingleLimit Limits::initDefaulLimits()
 {
     SingleLimit defaultLimits;
 
@@ -159,6 +158,7 @@ SingleLimit RrlIpTableImpl::initDefaulLimits()
 
     parseRequestTypes(::arg()["rrl-types"], defaultLimits.types);
 
+    d_limits.clear();
     return defaultLimits;
 }
 
@@ -268,7 +268,7 @@ RrlNode RrlIpTableImpl::getNode(const ComboAddress& addr)
         d_messages.error(ex.what());
     }
 
-    return RrlNode(rinp, addr, whiteList, d_limits[findLimitIndex(addr)]);
+    return RrlNode(rinp, addr, whiteList, d_limits.findLimit(addr));
 
 }
 
@@ -292,16 +292,6 @@ bool RrlIpTableImpl::tryBlock(RrlNode node)
     }
 
     return res;
-}
-
-int RrlIpTableImpl::findLimitIndex(const ComboAddress &address)
-{
-    for (size_t i = 1; i < d_limits.size(); i++) {
-        if (d_limits[i].netmask.match(address))
-            return i;
-    }
-
-    return 0;
 }
 
 string RrlIpTableImpl::parseWhiteList(const string &filename)
@@ -417,57 +407,7 @@ void RrlIpTableImpl::cleanRrlNodes()
     d_messages.info(str.str());
 }
 
-string RrlIpTableImpl::parseLimitFile(const string &filename)
-{
-    string error;
-    try
-    {
-        std::vector<SingleLimit> newLimits;
-        newLimits.push_back(initDefaulLimits());
-
-        using boost::property_tree::ptree;
-        ptree tree;
-        boost::property_tree::info_parser::read_info(filename, tree);
-
-        BOOST_FOREACH (const boost::property_tree::ptree::value_type& node,
-                       tree.get_child("nodes")) {
-
-            SingleLimit limit;
-            const ptree& values = node.second;
-
-            limit.netmask = Netmask(values.get<string>("address"));
-            limit.limit_types_number = values.get<u_int32_t>("limit-types-count");
-            limit.limit_ratio_number = values.get<u_int32_t>("limit-ratio-count");
-            parseRequestTypes(values.get<string>("types"), limit.types);
-            limit.ratio = values.get<double>("ratio");
-            limit.detection_period = values.get<u_int32_t>("detection-period");
-            limit.blocking_time = values.get<u_int32_t>("blocking-period");
-
-            newLimits.push_back(limit);
-        }
-        d_limits.swap(newLimits);
-        d_limits_enabled = true;
-        return "";
-    }
-    catch(boost::property_tree::ptree_bad_path err) {
-        error = err.what();
-    }
-    catch(boost::property_tree::ptree_bad_data err) {
-        error = err.what();
-    }
-    catch(boost::property_tree::info_parser_error err) {
-        error = err.what();
-    }
-    catch(...) {
-        error = "unknown error";
-    }
-    error = "Special limits for netmasks were not set. Reason: " + error;
-    d_limits_enabled = false;
-    d_messages.error(error);
-    return error;
-}
-
-void RrlIpTableImpl::parseRequestTypes(const string &str, std::set<QType> &types)
+void Limits::parseRequestTypes(const string &str, std::set<QType> &types)
 {
     std::vector<std::string> splitted;
     boost::split(splitted, str, boost::is_any_of(","));
@@ -507,12 +447,12 @@ string RrlIpTableImpl::reloadSpecialLimits(const std::string &pathToFile)
         return "Rrl is disabled\n";
     }
 
-    if(!d_limits_enabled) {
+    if(!d_limits.enabled()) {
         d_messages.info("Trying to reload rrl special limits while they are disabled by configuration");
         return "Special limits are disabled by configuration\n";
     }
 
-    string answer = parseLimitFile(pathToFile);
+    string answer = d_limits.init(pathToFile);
 
     if(!answer.empty()) {
         return answer;
@@ -574,6 +514,67 @@ void Messages::error(const std::string &message1, const std::string &message2)
 void Messages::info(const std::string &message)
 {
     log() << Logger::Info << rrlMessageString << " " << message << std::endl;
+}
+
+SingleLimit Limits::findLimit(const ComboAddress &address)
+{
+    int index = 0;
+    for (size_t i = 1; i < d_limits.size(); i++) {
+        if (d_limits[i].netmask.match(address))
+            index = i;
+    }
+
+    return d_limits[index];
+}
+
+string Limits::init(const std::string &fileName)
+{
+    string error;
+    try
+    {
+        std::vector<SingleLimit> newLimits;
+        newLimits.push_back(initDefaulLimits());
+
+        using boost::property_tree::ptree;
+        ptree tree;
+        boost::property_tree::info_parser::read_info(fileName, tree);
+
+        BOOST_FOREACH (const boost::property_tree::ptree::value_type& node,
+                       tree.get_child("nodes")) {
+
+            SingleLimit limit;
+            const ptree& values = node.second;
+
+            limit.netmask = Netmask(values.get<string>("address"));
+            limit.limit_types_number = values.get<u_int32_t>("limit-types-count");
+            limit.limit_ratio_number = values.get<u_int32_t>("limit-ratio-count");
+            parseRequestTypes(values.get<string>("types"), limit.types);
+            limit.ratio = values.get<double>("ratio");
+            limit.detection_period = values.get<u_int32_t>("detection-period");
+            limit.blocking_time = values.get<u_int32_t>("blocking-period");
+
+            newLimits.push_back(limit);
+        }
+        d_limits.swap(newLimits);
+        d_limits_enabled = true;
+        return "";
+    }
+    catch(boost::property_tree::ptree_bad_path err) {
+        error = err.what();
+    }
+    catch(boost::property_tree::ptree_bad_data err) {
+        error = err.what();
+    }
+    catch(boost::property_tree::info_parser_error err) {
+        error = err.what();
+    }
+    catch(...) {
+        error = "unknown error";
+    }
+    error = "Special limits for netmasks were not set. Reason: " + error;
+    d_limits_enabled = false;
+    impl.d_messages.error(error);
+    return error;
 }
 
 }

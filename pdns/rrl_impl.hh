@@ -36,20 +36,27 @@ typedef std::map<Netmask, boost::shared_ptr<InternalNode> > RrlMap;
 
 class RrlIpTableImpl;
 
-class Messages {
+
+struct RrlImplContaining
+{
+    RrlIpTableImpl& impl;
+
+    RrlImplContaining(RrlIpTableImpl* im) : impl(*im) { }
+    virtual ~RrlImplContaining() {}
+};
+
+class Messages : public RrlImplContaining {
     static string rrlMessageString;
     static string rrlErrorString;
     static string rrlLockedString;
     static string rrlReleasedString;
     static string rrlReleasedCleaning;
 
-    RrlIpTableImpl& impl;
-
     boost::shared_ptr<Logger> d_logger;
     bool d_extra_logging;
-public:
 
-    Messages(RrlIpTableImpl* im) : impl(*im), d_extra_logging(false) { }
+public:
+    Messages(RrlIpTableImpl* im) : RrlImplContaining(im), d_extra_logging(false) { }
 
     Logger& log();
 
@@ -65,6 +72,24 @@ public:
     void info(const std::string& message);
 };
 
+class Limits : public RrlImplContaining
+{
+    std::vector<SingleLimit> d_limits;
+    bool              d_limits_enabled;
+
+    SingleLimit initDefaulLimits();
+
+public:
+    Limits(RrlIpTableImpl* im) : RrlImplContaining(im), d_limits_enabled(false) { d_limits.push_back(initDefaulLimits()); }
+
+    SingleLimit findLimit(const ComboAddress& address);
+    void parseRequestTypes(const string& str, std::set<QType>& types);
+
+    string init(const std::string& fileName);
+    int size() const { return d_limits.size(); }
+    bool enabled() const { return d_limits_enabled; }
+};
+
 struct RrlIpTableImpl
 {
   Mode   d_mode;
@@ -76,29 +101,22 @@ struct RrlIpTableImpl
   u_int32_t     d_request_counter;
   u_int32_t     d_locked_nodes;
 
-  std::vector<SingleLimit> d_limits;
-  bool              d_limits_enabled;
   std::set<Netmask> d_white_list;
   bool              d_white_list_enabled;
   RrlMap            d_data;
 
   Messages d_messages;
+  Limits d_limits;
 
   Time now() const { return boost::posix_time::microsec_clock::local_time(); }
   RrlMap::iterator get(const ComboAddress& addr);
   Netmask truncateAddress(const ComboAddress& addr);
-  int findLimitIndex(const ComboAddress &address);
 
-  void parseRequestTypes(const string& str, std::set<QType>& types);
-  string parseLimitFile(const string& filename);
   string parseWhiteList(const string& filename);
 
   void initialize(bool readStateFromConfig, Mode mode);
   void initCleaningMode();
-  SingleLimit initDefaulLimits();
 
-  string showReleasedMessage(std::string address, std::string netmask = "");
-  string showLockedMessage(RrlNode node);
 
 public:
   RrlIpTableImpl();
