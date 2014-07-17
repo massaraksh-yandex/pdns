@@ -36,7 +36,7 @@ typedef std::map<Netmask, boost::shared_ptr<InternalNode> > RrlMap;
 
 class RrlIpTableImpl;
 
-struct Messages {
+class Messages {
     static string rrlMessageString;
     static string rrlErrorString;
     static string rrlLockedString;
@@ -44,10 +44,25 @@ struct Messages {
     static string rrlReleasedCleaning;
 
     RrlIpTableImpl& impl;
-    Messages(RrlIpTableImpl* im) : impl(*im) { }
 
-    string released(std::string address, std::string netmask = "");
-    string locked(RrlNode node);
+    boost::shared_ptr<Logger> d_logger;
+    bool d_extra_logging;
+public:
+
+    Messages(RrlIpTableImpl* im) : impl(*im), d_extra_logging(false) { }
+
+    Logger& log();
+
+    void init();
+
+    void released(std::string address);
+    void releasedCleaning(std::string address, std::string netmask = "");
+    void locked(RrlNode node);
+
+    void error(const std::string& message);
+    void error(const std::string& message1, const std::string& message2);
+
+    void info(const std::string& message);
 };
 
 struct RrlIpTableImpl
@@ -66,8 +81,6 @@ struct RrlIpTableImpl
   std::set<Netmask> d_white_list;
   bool              d_white_list_enabled;
   RrlMap            d_data;
-  boost::shared_ptr<Logger>           d_logger;
-  bool              d_extra_logging;
 
   Messages d_messages;
 
@@ -95,7 +108,6 @@ public:
   bool timeToClean() const;
   void cleanRrlNodes();
   bool tryBlock(RrlNode node);
-  Logger& log();
   Mode mode() const { return d_mode; }
   void setMode(Mode mode);
   RrlNode getNode(const ComboAddress& addr);

@@ -45,7 +45,7 @@ std::string RrlIpTable::reloadWhiteList(std::vector<std::string>::const_iterator
     std::ostringstream str;
     if((end - begin) != 1) {
         str << "Trying to reload white list but passed wrong params list. size == " << (end - begin);
-        d_impl->log() << Logger::Alert << Rrl::RrlIpTableImpl::rrlMessageString << str.str() << std::endl;
+        d_impl->d_messages.info(str.str());
         return str.str() + "\n";
     }
 
@@ -60,7 +60,7 @@ std::string RrlIpTable::reloadSpecialLimits(std::vector<std::string>::const_iter
     std::ostringstream str;
     if((end - begin) != 1) {
         str << "Trying to reload special limits but passed wrong params list. size == " << (end - begin);
-        d_impl->log() << Logger::Alert << Rrl::RrlIpTableImpl::rrlMessageString << str.str() << std::endl;
+        d_impl->d_messages.info(str.str());
         return str.str() + "\n";
     }
 
@@ -75,7 +75,7 @@ std::string RrlIpTable::setRrlMode(std::vector<std::string>::const_iterator begi
     std::ostringstream str;
     if((end - begin) != 1) {
         str << "Trying to reset rrl mode but passed wrong params list. size == " << (end - begin);
-        d_impl->log() << Logger::Alert << Rrl::RrlIpTableImpl::rrlMessageString << str.str() << std::endl;
+        d_impl->d_messages.info(str.str());
         return str.str() + "\n";
     }
 
@@ -86,7 +86,7 @@ std::string RrlIpTable::setRrlMode(std::vector<std::string>::const_iterator begi
     catch(std::exception& ex)
     {
         str << "Trying to reset rrl mode but passed wrong param == " << *begin;
-        d_impl->log() << Logger::Alert << Rrl::RrlIpTableImpl::rrlMessageString << str.str() << std::endl;
+        d_impl->d_messages.info(str.str());
         return str.str() + "\n";
     }
 

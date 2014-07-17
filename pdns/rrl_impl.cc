@@ -80,14 +80,14 @@ string Mode::toString(Mode mode)
 
 RrlIpTableImpl::RrlIpTableImpl() :
     d_locked_nodes(0), d_limits_enabled(false), d_white_list_enabled(false),
-    d_extra_logging(false), d_messages(this)
+    d_messages(this)
 {
     initialize(true, Mode::Off);
 }
 
 RrlIpTableImpl::RrlIpTableImpl(Mode mode) :
     d_locked_nodes(0), d_limits_enabled(false), d_white_list_enabled(false),
-    d_extra_logging(false), d_messages(this)
+    d_messages(this)
 {
     initialize(false, mode);
 }
@@ -110,17 +110,6 @@ void RrlIpTableImpl::initialize(bool readStateFromConfig, Mode mode)
             initCleaningMode();
             d_limits.push_back(initDefaulLimits());
 
-            if (::arg().mustDo("rrl-enable-log-file")) {
-                std::string logName = ::arg()["rrl-log-file"];
-                d_logger.reset(new Logger("rrl-log"));
-
-                if (!d_logger->toFile(logName)) {
-                    d_logger.reset();
-                    log() << Logger::Error << d_messages.rrlErrorString << " Cannot logging rrl actions to file. Filename: " << logName << std::endl;
-                }
-                d_extra_logging = ::arg().mustDo("rrl-enable-extra-logging");
-            }
-
             if (::arg().mustDo("rrl-enable-white-list")) {
                 parseWhiteList(::arg()["rrl-white-list"]);
             }
@@ -128,13 +117,13 @@ void RrlIpTableImpl::initialize(bool readStateFromConfig, Mode mode)
             if(::arg().mustDo("rrl-enable-special-limits")) {
                 parseLimitFile(::arg()["rrl-special-limits"]);
             }
-            log() << Logger::Info << d_messages.rrlMessageString << " mode: " << Mode::toString(d_mode) << std::endl;
-            log() << Logger::Info << d_messages.rrlMessageString << " rrl is initialized" << std::endl;
+            d_messages.info("mode: " + Mode::toString(d_mode));
+            d_messages.info("rl is initialized");
         }
     }
     catch (std::exception ex) {
         d_mode = Mode::Off;
-        log() << Logger::Error << rrlErrorString << " Critical error in RrlIpTable. Exception: " << ex.what() << std::endl;
+        d_messages.error("Critical error in RrlIpTable. Exception:", ex.what());
     }
 }
 
@@ -153,7 +142,7 @@ void RrlIpTableImpl::initCleaningMode()
         d_cleaning.remove_if_older = ::arg().asDouble("rrl-clean-remove-if-older");
     } else {
         d_cleaning.mode = RrlCleaning::Off;
-        log() << Logger::Error << rrlErrorString << "Wrong cleaning mode. value: \'" << cleaningMode << "\'" << std::endl;
+        d_messages.error("Wrong cleaning mode. value:", cleaningMode);
     }
 }
 
@@ -173,44 +162,28 @@ SingleLimit RrlIpTableImpl::initDefaulLimits()
     return defaultLimits;
 }
 
-Logger& RrlIpTableImpl::log()
+Logger& Messages::log()
 {
     return d_logger ? *d_logger : theL();
+}
+
+void Messages::init()
+{
+    if (::arg().mustDo("rrl-enable-log-file")) {
+        std::string logName = ::arg()["rrl-log-file"];
+        d_logger.reset(new Logger("rrl-log"));
+
+        if (!d_logger->toFile(logName)) {
+            d_logger.reset();
+            log() << Logger::Error << rrlErrorString << " Cannot logging rrl actions to file. Filename: " << logName << std::endl;
+        }
+        d_extra_logging = ::arg().mustDo("rrl-enable-extra-logging");
+    }
 }
 
 void RrlIpTableImpl::setMode(Mode mode)
 {
     d_mode = mode;
-}
-
-string RrlIpTableImpl::showReleasedMessage(std::string address, std::string netmask)
-{
-    std::ostringstream stream;
-    stream << Logger::Info << rrlReleasedString;
-
-    if(netmask.empty())
-         stream << rrlReleasedCleaning;
-
-    stream << " address:" << address;
-
-    if(netmask.empty())
-        stream << " netmask:" << netmask;
-
-    return stream.str();
-}
-
-string RrlIpTableImpl::showLockedMessage(RrlNode node)
-{
-    std::ostringstream stream;
-    stream << Logger::Info << rrlLockedString << " address:"
-           << node.address.toString() << " netmask:" << node.limit.netmask.toString();
-    if(d_extra_logging) {
-        stream << "; Ratio-requests counter: " << node.node->counter_ratio
-               << "; Type-requests counter: " << node.node->counter_types
-               << "; Ratio limit: " << node.limit.limit_ratio_number
-               << "; Types limit: " << node.limit.limit_types_number;
-    }
-    return stream.str();
 }
 
 RrlMap::iterator RrlIpTableImpl::get(const ComboAddress &addr)
@@ -258,7 +231,7 @@ bool RrlIpTableImpl::decreaseCounters(RrlNode& node)
     if(!tryBlock(node)) {
         if (rin.blocked) {
             d_locked_nodes--;
-            log() << d_messages.released(node.address.toString(), node.limit.netmask.toString()) << endl;
+            d_messages.releasedCleaning(node.address.toString(), node.limit.netmask.toString());
         }
         rin.blocked = false;
     }
@@ -292,7 +265,7 @@ RrlNode RrlIpTableImpl::getNode(const ComboAddress& addr)
         rinp->last_request_time = now();
     }
     catch(std::exception& ex) {
-        log() << Logger::Error << rrlErrorString << " " << ex.what() << std::endl;
+        d_messages.error(ex.what());
     }
 
     return RrlNode(rinp, addr, whiteList, d_limits[findLimitIndex(addr)]);
@@ -311,7 +284,7 @@ bool RrlIpTableImpl::tryBlock(RrlNode node)
 
     if (res && !iter->blocked) {
         d_locked_nodes++;
-        log() << d_messages.locked(node) << std::endl;
+        d_messages.locked(node);
 
         Time rtime = boost::posix_time::microsec_clock::local_time();
         iter->block_till = rtime +
@@ -366,7 +339,7 @@ string RrlIpTableImpl::parseWhiteList(const string &filename)
     d_white_list_enabled = false;
 
     error = "White list was not set. Reason: " + error;
-    log() << Logger::Error << rrlErrorString << " " << error << std::endl;
+    d_messages.error(error);
     return error;
 }
 
@@ -388,6 +361,7 @@ bool RrlIpTableImpl::timeToClean() const
 
 void RrlIpTableImpl::cleanRrlNodes()
 {
+    int deleted_nodes = 0;
     switch(d_cleaning.mode)
     {
     case RrlCleaning::Off:return;
@@ -400,7 +374,7 @@ void RrlIpTableImpl::cleanRrlNodes()
                 InternalNode& node = *it->second;
                 if(node.wasLocked() && node.block_till < now()) {
                     node.blocked = false;
-                    log() << d_messages.released(it->first.toString()) << endl;
+                    d_messages.released(it->first.toString());
                 }
 
                 if(!node.blocked)
@@ -413,6 +387,7 @@ void RrlIpTableImpl::cleanRrlNodes()
                 d_data.erase(queue.top());
                 queue.pop();
                 counter++;
+                deleted_nodes++;
             }
         }
         ;break;
@@ -427,15 +402,19 @@ void RrlIpTableImpl::cleanRrlNodes()
 
                 if(node.wasLocked() && node.block_till < now()) {
                     node.blocked = false;
-                    log() << d_messages.released(it->first.toString()) << endl;
+                    d_messages.released(it->first.toString());
                 }
 
-                if(node.last_request_time < border && !node.blocked)
+                if(node.last_request_time < border && !node.blocked) {
                     d_data.erase(it++);
+                    deleted_nodes++;
+                }
             }
         }
         ;break;
     }
+    std::ostringstream str; str << "Cleaning. Nubmer removed nodes: " << deleted_nodes;
+    d_messages.info(str.str());
 }
 
 string RrlIpTableImpl::parseLimitFile(const string &filename)
@@ -484,7 +463,7 @@ string RrlIpTableImpl::parseLimitFile(const string &filename)
     }
     error = "Special limits for netmasks were not set. Reason: " + error;
     d_limits_enabled = false;
-    log() << Logger::Error << rrlErrorString << " " << error << std::endl;
+    d_messages.error(error);
     return error;
 }
 
@@ -501,12 +480,12 @@ void RrlIpTableImpl::parseRequestTypes(const string &str, std::set<QType> &types
 string RrlIpTableImpl::reloadWhiteList(const std::string& pathToFile)
 {
     if(!enabled()) {
-        log() << Logger::Alert << rrlMessageString << "Trying to reload rrl white list while rrl is disabled" << std::endl;
+        d_messages.info("Trying to reload rrl white list while rrl is disabled");
         return "Rrl is disabled";
     }
 
     if(!d_white_list_enabled) {
-        log() << Logger::Alert << rrlMessageString << "Trying to reload rrl white list while white list is disabled by configuration" << std::endl;
+        d_messages.info("Trying to reload rrl white list while white list is disabled by configuration");
         return "White list is disabled by configuration\n";
     }
 
@@ -524,12 +503,12 @@ string RrlIpTableImpl::reloadWhiteList(const std::string& pathToFile)
 string RrlIpTableImpl::reloadSpecialLimits(const std::string &pathToFile)
 {
     if(!enabled()) {
-        log() << Logger::Alert << rrlMessageString << "Trying to reload rrl special limits while rrl is disabled" << std::endl;
+        d_messages.info("Trying to reload rrl special limits while rrl is disabled");
         return "Rrl is disabled\n";
     }
 
     if(!d_limits_enabled) {
-        log() << Logger::Alert << rrlMessageString << "Trying to reload rrl special limits while they are disabled by configuration" << std::endl;;
+        d_messages.info("Trying to reload rrl special limits while they are disabled by configuration");
         return "Special limits are disabled by configuration\n";
     }
 
@@ -558,34 +537,43 @@ string RrlIpTableImpl::information() const
     return str.str();
 }
 
-string Messages::released(std::string address, std::string netmask)
+void Messages::released(std::string address)
 {
-    std::ostringstream stream;
-    stream << Logger::Info << impl.rrlReleasedString;
-
-    if(netmask.empty())
-         stream << impl.rrlReleasedCleaning;
-
-    stream << " address:" << address;
-
-    if(netmask.empty())
-        stream << " netmask:" << netmask;
-
-    return stream.str();
+    log() << Logger::Info << rrlReleasedString << " address:" << address << std::endl;
 }
 
-string Messages::locked(RrlNode node)
+void Messages::releasedCleaning(std::string address, std::string netmask)
 {
-    std::ostringstream stream;
-    stream << Logger::Info << impl.rrlLockedString << " address:"
-           << node.address.toString() << " netmask:" << node.limit.netmask.toString();
-    if(impl.d_extra_logging) {
-        stream << "; Ratio-requests counter: " << node.node->counter_ratio
+    log() << Logger::Info << rrlReleasedString << rrlReleasedCleaning
+          << " address:" << address << " netmask:" << netmask << std::endl;
+}
+
+void Messages::locked(RrlNode node)
+{
+    log() << Logger::Info << rrlLockedString << " address:"
+          << node.address.toString() << " netmask:" << node.limit.netmask.toString();
+    if(d_extra_logging) {
+        log() << "; Ratio-requests counter: " << node.node->counter_ratio
                << "; Type-requests counter: " << node.node->counter_types
                << "; Ratio limit: " << node.limit.limit_ratio_number
                << "; Types limit: " << node.limit.limit_types_number;
     }
-    return stream.str();
+    log() << std::endl;
+}
+
+void Messages::error(const std::string &message)
+{
+    log() << Logger::Error << rrlErrorString << " " << message << std::endl;
+}
+
+void Messages::error(const std::string &message1, const std::string &message2)
+{
+    log() << Logger::Error << rrlErrorString << " " << message1 << " " << message2 << std::endl;
+}
+
+void Messages::info(const std::string &message)
+{
+    log() << Logger::Info << rrlMessageString << " " << message << std::endl;
 }
 
 }
