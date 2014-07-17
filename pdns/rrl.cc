@@ -113,11 +113,10 @@ bool RrlNode::checkState() const
 bool RrlNode::update(QType type)
 {
     RrlIpTable& table = rrlIpTable();
-    if(!table.enabled())
+    if(!table.enabled() || !valid())
       return false;
 
     if(limit.types.count(type) && valid()) {
-      node->last_request_time = boost::posix_time::microsec_clock::local_time();
       node->counter_types++;
       node->blocked = table.d_impl->tryBlock(*this);
       return node->blocked && checkState();
@@ -128,13 +127,12 @@ bool RrlNode::update(QType type)
 bool RrlNode::update(double ratio)
 {
     RrlIpTable& table = rrlIpTable();
-    if(!table.enabled())
+    if(!table.enabled() || !valid())
       return false;
 
-    if(ratio >= limit.ratio && valid()) {
+    node->last_request_time = boost::posix_time::microsec_clock::local_time();
+    if(ratio >= limit.ratio) {
       node->counter_ratio++;
-      node->last_request_time = boost::posix_time::microsec_clock::local_time();
-
       node->blocked = table.d_impl->tryBlock(*this);
       return node->blocked && checkState();
     }
