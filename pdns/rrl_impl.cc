@@ -22,16 +22,6 @@
 
 using std::string;
 
-bool operator==(const Netmask& a, const Netmask& b)
-{
-    return a.match(b.getNetwork());
-}
-
-bool operator<(const Netmask& a, const Netmask& b)
-{
-    return a.compare(&b.getNetwork());
-}
-
 namespace Rrl {
 
 struct SortRrlNodes : std::binary_function<RrlMap::iterator, RrlMap::iterator, bool>
@@ -79,15 +69,15 @@ string Mode::toString(Mode mode)
 }
 
 RrlIpTableImpl::RrlIpTableImpl() :
-    d_locked_nodes(0), d_white_list_enabled(false),
-    d_messages(this), d_limits(this)
+    d_locked_nodes(0),
+    d_messages(this), d_limits(this), d_white_list(this), d_cleaning(this)
 {
     initialize(true, Mode::Off);
 }
 
 RrlIpTableImpl::RrlIpTableImpl(Mode mode) :
-    d_locked_nodes(0), d_white_list_enabled(false),
-    d_messages(this), d_limits(this)
+    d_locked_nodes(0),
+    d_messages(this), d_limits(this), d_white_list(this), d_cleaning(this)
 {
     initialize(false, mode);
 }
@@ -107,14 +97,16 @@ void RrlIpTableImpl::initialize(bool readStateFromConfig, Mode mode)
             d_ipv4_prefix_length = ::arg().asNum("rrl-ipv4-prefix-length");
             d_ipv6_prefix_length = ::arg().asNum("rrl-ipv6-prefix-length");
 
-            initCleaningMode();
+            d_cleaning.initCleaningMode();
 
             if (::arg().mustDo("rrl-enable-white-list")) {
-                parseWhiteList(::arg()["rrl-white-list"]);
+                d_white_list.init(::arg()["rrl-white-list"]);
             }
 
             if(::arg().mustDo("rrl-enable-special-limits")) {
                 d_limits.init(::arg()["rrl-special-limits"]);
+            } else {
+                d_limits.init();
             }
             d_messages.info("mode: " + Mode::toString(d_mode));
             d_messages.info("rl is initialized");
@@ -126,22 +118,22 @@ void RrlIpTableImpl::initialize(bool readStateFromConfig, Mode mode)
     }
 }
 
-void RrlIpTableImpl::initCleaningMode()
+void Cleaning::initCleaningMode()
 {
     std::string cleaningMode = ::arg()["rrl-cleaning-mode"];
     if(!::arg().mustDo("rrl-cleaning-mode")) {
-        d_cleaning.mode = RrlCleaning::Off;
+        d_mode = Cleaning::Off;
     } else if(cleaningMode == "larger-than") {
-        d_cleaning.mode = RrlCleaning::LargerThan;
-        d_cleaning.remove_if_larger = ::arg().asNum("rrl-clean-remove-if-larger");
-        d_cleaning.remove_n_percent_nodes = ::arg().asDouble("rrl-clean-remove-n-percent-nodes");
+        d_mode = Cleaning::LargerThan;
+        remove_if_larger = ::arg().asNum("rrl-clean-remove-if-larger");
+        remove_n_percent_nodes = ::arg().asDouble("rrl-clean-remove-n-percent-nodes");
     } else if(cleaningMode == "remove-old") {
-        d_cleaning.mode = RrlCleaning::RemoveOld;
-        d_cleaning.remove_every_n_request = ::arg().asDouble("rrl-clean-remove-every-n-request");
-        d_cleaning.remove_if_older = ::arg().asDouble("rrl-clean-remove-if-older");
+        d_mode = Cleaning::RemoveOld;
+        remove_every_n_request = ::arg().asDouble("rrl-clean-remove-every-n-request");
+        remove_if_older = ::arg().asDouble("rrl-clean-remove-if-older");
     } else {
-        d_cleaning.mode = RrlCleaning::Off;
-        d_messages.error("Wrong cleaning mode. value:", cleaningMode);
+        d_mode = Cleaning::Off;
+        impl.d_messages.error("Wrong cleaning mode. value:", cleaningMode);
     }
 }
 
@@ -252,7 +244,7 @@ RrlNode RrlIpTableImpl::getNode(const ComboAddress& addr)
         RrlMap::iterator i = d_data.find(address);
         d_request_counter++;
 
-        whiteList = d_white_list.count(address);
+        whiteList = d_white_list.contains(address);
 
         if (i == d_data.end()) {
             int length = (addr.sin4.sin_family == AF_INET) ? d_ipv4_prefix_length :
@@ -294,7 +286,7 @@ bool RrlIpTableImpl::tryBlock(RrlNode node)
     return res;
 }
 
-string RrlIpTableImpl::parseWhiteList(const string &filename)
+string WhiteList::init(const string &filename)
 {
     string error;
     try
@@ -329,7 +321,7 @@ string RrlIpTableImpl::parseWhiteList(const string &filename)
     d_white_list_enabled = false;
 
     error = "White list was not set. Reason: " + error;
-    d_messages.error(error);
+    impl.d_messages.error(error);
     return error;
 }
 
@@ -338,11 +330,11 @@ bool RrlIpTableImpl::timeToClean() const
     if(!enabled())
         return false;
 
-    switch(d_cleaning.mode)
+    switch(d_cleaning.mode())
     {
-    case RrlCleaning::LargerThan:
+    case Cleaning::LargerThan:
         return d_data.size() > d_cleaning.remove_if_larger;
-    case RrlCleaning::RemoveOld:
+    case Cleaning::RemoveOld:
         return d_request_counter >= d_cleaning.remove_every_n_request;
     default:
         return false;
@@ -352,10 +344,10 @@ bool RrlIpTableImpl::timeToClean() const
 void RrlIpTableImpl::cleanRrlNodes()
 {
     int deleted_nodes = 0;
-    switch(d_cleaning.mode)
+    switch(d_cleaning.mode())
     {
-    case RrlCleaning::Off:return;
-    case RrlCleaning::LargerThan:
+    case Cleaning::Off:return;
+    case Cleaning::LargerThan:
         if(d_data.size() > d_cleaning.remove_if_larger)
         {
             std::priority_queue<RrlMap::iterator, std::deque<RrlMap::iterator>, SortRrlNodes> queue;
@@ -381,7 +373,7 @@ void RrlIpTableImpl::cleanRrlNodes()
             }
         }
         ;break;
-    case RrlCleaning::RemoveOld:
+    case Cleaning::RemoveOld:
         if(d_request_counter >= d_cleaning.remove_every_n_request)
         {
             d_request_counter = 0;
@@ -424,12 +416,12 @@ string RrlIpTableImpl::reloadWhiteList(const std::string& pathToFile)
         return "Rrl is disabled";
     }
 
-    if(!d_white_list_enabled) {
+    if(!d_white_list.enabled()) {
         d_messages.info("Trying to reload rrl white list while white list is disabled by configuration");
         return "White list is disabled by configuration\n";
     }
 
-    string answer = parseWhiteList(pathToFile);
+    string answer = d_white_list.init(pathToFile);
 
     if(!answer.empty()) {
         return answer;

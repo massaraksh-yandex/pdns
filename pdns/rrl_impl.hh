@@ -11,31 +11,19 @@
 #include <set>
 #include <map>
 
-struct RrlCleaning {
-    enum CleaningMode {
-        Off,
-        LargerThan,
-        RemoveOld
-    };
+inline bool operator==(const Netmask& a, const Netmask& b)
+{
+    return a.match(b.getNetwork());
+}
 
-    RrlCleaning()
-        : mode(Off), remove_every_n_request(0), remove_if_larger(0),
-          remove_if_older(0), remove_n_percent_nodes(0.0)
-    { }
-
-    CleaningMode  mode;
-    u_int32_t     remove_every_n_request;
-    u_int32_t     remove_if_larger;
-    u_int32_t     remove_if_older;
-    double        remove_n_percent_nodes;
-};
+inline bool operator<(const Netmask& a, const Netmask& b)
+{
+    return a.compare(&b.getNetwork());
+}
 
 namespace Rrl {
 
-typedef std::map<Netmask, boost::shared_ptr<InternalNode> > RrlMap;
-
 class RrlIpTableImpl;
-
 
 struct RrlImplContaining
 {
@@ -44,6 +32,30 @@ struct RrlImplContaining
     RrlImplContaining(RrlIpTableImpl* im) : impl(*im) { }
     virtual ~RrlImplContaining() {}
 };
+
+struct Cleaning : public RrlImplContaining{
+    enum CleaningMode {
+        Off,
+        LargerThan,
+        RemoveOld
+    };
+
+    Cleaning(RrlIpTableImpl* im) : RrlImplContaining(im),
+            d_mode(Off), remove_every_n_request(0), remove_if_larger(0),
+          remove_if_older(0), remove_n_percent_nodes(0.0)
+    { initCleaningMode(); }
+
+    void initCleaningMode();
+    CleaningMode mode() const { return d_mode; }
+
+    CleaningMode  d_mode;
+    u_int32_t     remove_every_n_request;
+    u_int32_t     remove_if_larger;
+    u_int32_t     remove_if_older;
+    double        remove_n_percent_nodes;
+};
+
+typedef std::map<Netmask, boost::shared_ptr<InternalNode> > RrlMap;
 
 class Messages : public RrlImplContaining {
     static string rrlMessageString;
@@ -80,14 +92,28 @@ class Limits : public RrlImplContaining
     SingleLimit initDefaulLimits();
 
 public:
-    Limits(RrlIpTableImpl* im) : RrlImplContaining(im), d_limits_enabled(false) { d_limits.push_back(initDefaulLimits()); }
+    Limits(RrlIpTableImpl* im) : RrlImplContaining(im), d_limits_enabled(false) { }
 
     SingleLimit findLimit(const ComboAddress& address);
     void parseRequestTypes(const string& str, std::set<QType>& types);
 
+    void init(){ d_limits.push_back(initDefaulLimits()); }
     string init(const std::string& fileName);
     int size() const { return d_limits.size(); }
     bool enabled() const { return d_limits_enabled; }
+};
+
+struct WhiteList : public RrlImplContaining
+{
+    std::set<Netmask> d_white_list;
+    bool              d_white_list_enabled;
+
+    WhiteList(RrlIpTableImpl* im) : RrlImplContaining(im), d_white_list_enabled(false) { }
+
+    bool contains(const Netmask& address) const { return d_white_list.count(address); }
+    string init(const std::string& fileName);
+    int size() const { return d_white_list.size(); }
+    bool enabled() const { return d_white_list_enabled; }
 };
 
 struct RrlIpTableImpl
@@ -96,47 +122,42 @@ struct RrlIpTableImpl
   u_int8_t  d_ipv4_prefix_length;
   u_int8_t  d_ipv6_prefix_length;
 
-  RrlCleaning d_cleaning;
-
   u_int32_t     d_request_counter;
   u_int32_t     d_locked_nodes;
 
-  std::set<Netmask> d_white_list;
-  bool              d_white_list_enabled;
   RrlMap            d_data;
 
   Messages d_messages;
   Limits d_limits;
+  WhiteList d_white_list;
+  Cleaning d_cleaning;
 
   Time now() const { return boost::posix_time::microsec_clock::local_time(); }
   RrlMap::iterator get(const ComboAddress& addr);
   Netmask truncateAddress(const ComboAddress& addr);
 
-  string parseWhiteList(const string& filename);
-
   void initialize(bool readStateFromConfig, Mode mode);
-  void initCleaningMode();
 
 
 public:
-  RrlIpTableImpl();
-  RrlIpTableImpl(Mode mode);
-  ~RrlIpTableImpl();
+  RrlIpTableImpl(); //
+  RrlIpTableImpl(Mode mode); //
+  ~RrlIpTableImpl(); //
 
-  bool timeToClean() const;
-  void cleanRrlNodes();
-  bool tryBlock(RrlNode node);
-  Mode mode() const { return d_mode; }
-  void setMode(Mode mode);
-  RrlNode getNode(const ComboAddress& addr);
-  bool decreaseCounters(RrlNode &node);
+  bool timeToClean() const; //
+  void cleanRrlNodes(); //
+  bool tryBlock(RrlNode node);//*
+  Mode mode() const { return d_mode; } //*
+  void setMode(Mode mode); //*
+  RrlNode getNode(const ComboAddress& addr); //
+  bool decreaseCounters(RrlNode &node); //
 
-  bool dropQueries() const { return d_mode.type == Mode::Block; }
-  bool enabled() const { return d_mode.type != Mode::Off; }
+  bool dropQueries() const { return d_mode.type == Mode::Block; } //
+  bool enabled() const { return d_mode.type != Mode::Off; } //
 
-  string reloadWhiteList(const std::string &pathToFile);
-  string reloadSpecialLimits(const std::string &pathToFile);
-  string information() const;
+  string reloadWhiteList(const std::string &pathToFile); //
+  string reloadSpecialLimits(const std::string &pathToFile); //
+  string information() const; //
 };
 }
 #endif // WITH_RRL
