@@ -58,6 +58,8 @@ struct InternalNode
    InternalNode() : block_till(), last_request_time(), counter_ratio(0),
      counter_types(0), blocked(false)
    { }
+
+   bool wasLocked() const { return !block_till.is_not_a_date_time(); }
 };
 typedef boost::shared_ptr<InternalNode> InternalNodePtr;
 

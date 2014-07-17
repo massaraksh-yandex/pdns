@@ -386,22 +386,20 @@ void RrlIpTableImpl::cleanRrlNodes()
             std::priority_queue<RrlMap::iterator, std::deque<RrlMap::iterator>, SortRrlNodes> queue;
 
             for(RrlMap::iterator it = d_data.begin(); it != d_data.end(); it++) {
-                if(!it->second->block_till.is_not_a_date_time() && it->second->block_till < now()) {
-                    it->second->blocked = false;
+                InternalNode& node = *it->second;
+                if(node.wasLocked() && node.block_till < now()) {
+                    node.blocked = false;
                     showReleasedMessage(it->first.toString());
                 }
 
-                queue.push(it);
+                if(!node.blocked)
+                    queue.push(it);
             }
 
             int counter = 0;
-            double max = d_cleaning.remove_n_percent_nodes * queue.size();
+            int max = d_cleaning.remove_n_percent_nodes * queue.size();
             while(!queue.empty() && (counter < max)) {
-                RrlMap::iterator forRemove = queue.top();
-                if(forRemove->second.use_count() != 1)
-                    continue;
-
-                d_data.erase(forRemove);
+                d_data.erase(queue.top());
                 queue.pop();
                 counter++;
             }
@@ -414,18 +412,15 @@ void RrlIpTableImpl::cleanRrlNodes()
             for(RrlMap::iterator it = d_data.begin(); it != d_data.end();) {
                 Time border = boost::posix_time::microsec_clock::local_time() -
                         boost::posix_time::milliseconds(d_cleaning.remove_if_older);
+                InternalNode& node = *it->second;
 
-                if(!it->second->block_till.is_not_a_date_time() && it->second->block_till < now()) {
-                    it->second->blocked = false;
+                if(node.wasLocked() && node.block_till < now()) {
+                    node.blocked = false;
                     showReleasedMessage(it->first.toString());
                 }
 
-                RrlMap::iterator i = it++;
-                if(i->second.use_count() != 1)
-                    continue;
-
-                if(i->second->last_request_time < border)
-                    d_data.erase(i);
+                if(node.last_request_time < border && !node.blocked)
+                    d_data.erase(it++);
             }
         }
         ;break;
