@@ -99,9 +99,9 @@ void RrlIpTableImpl::initialize(bool readStateFromConfig, Mode mode)
 {
     try {
         if(readStateFromConfig)
-            d_mode = Mode::fromString(::arg()["rrl-mode"]);
+            setMode(Mode::fromString(::arg()["rrl-mode"]));
         else
-            d_mode = mode;
+            setMode(mode);
 
         if (enabled()) {
             d_ipv4_prefix_length = ::arg().asNum("rrl-ipv4-prefix-length");
@@ -181,6 +181,7 @@ Logger &RrlIpTableImpl::log()
 void RrlIpTableImpl::setMode(Mode mode)
 {
     d_mode = mode;
+    log() << Logger::Info << rrlMessageString << " mode: " << Mode::toString(d_mode) << std::endl;
 }
 
 void RrlIpTableImpl::showReleasedMessage(const std::string& address, const std::string& netmask)

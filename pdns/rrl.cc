@@ -81,7 +81,7 @@ std::string RrlIpTable::setRrlMode(std::vector<std::string>::const_iterator begi
 
     Rrl::Mode newMode;
     try {
-        newMode= Rrl::Mode::fromString(*begin);
+        newMode = Rrl::Mode::fromString(*begin);
     }
     catch(std::exception& ex)
     {
@@ -116,6 +116,7 @@ bool RrlNode::update(QType type)
     if(!table.enabled() || !valid())
       return false;
 
+    node->last_request_time = boost::posix_time::microsec_clock::local_time();
     if(limit.types.count(type) && valid()) {
       node->counter_types++;
       node->blocked = table.d_impl->tryBlock(*this);
