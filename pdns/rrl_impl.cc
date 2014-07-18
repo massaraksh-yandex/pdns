@@ -30,13 +30,6 @@ struct SortRrlNodes : std::binary_function<RrlMap::iterator, RrlMap::iterator, b
     { return first->second->last_request_time < second->second->last_request_time; }
 };
 
-string Messages::rrlMessageString    = "[message]";
-string Messages::rrlErrorString      = "[error]";
-string Messages::rrlLockedString     = "[locked]";
-string Messages::rrlReleasedString   = "[released]";
-string Messages::rrlReleasedCleaning = "[cleaning]";
-
-
 Mode Mode::fromString(const string& str)
 {
     if(str == "off")
@@ -154,6 +147,16 @@ SingleLimit Limits::initDefaulLimits()
     return defaultLimits;
 }
 
+Messages::Messages(RrlIpTableImpl *im)
+ : RrlImplContaining(im), d_extra_logging(false)
+{
+    messages["message"] = "[message]";
+    messages["error"] = "[error]";
+    messages["locked"] = "[locked]";
+    messages["released"] = "[released]";
+    messages["cleaning"] = "[cleaning]";
+}
+
 Logger& Messages::log()
 {
     return d_logger ? *d_logger : theL();
@@ -167,7 +170,7 @@ void Messages::init()
 
         if (!d_logger->toFile(logName)) {
             d_logger.reset();
-            log() << Logger::Error << rrlErrorString << " Cannot logging rrl actions to file. Filename: " << logName << std::endl;
+            log() << Logger::Error << messages["error"] << " Cannot logging rrl actions to file. Filename: " << logName << std::endl;
         }
         d_extra_logging = ::arg().mustDo("rrl-enable-extra-logging");
     }
@@ -471,18 +474,18 @@ string RrlIpTableImpl::information() const
 
 void Messages::released(std::string address)
 {
-    log() << Logger::Info << rrlReleasedString << " address:" << address << std::endl;
+    log() << Logger::Info << messages.at("released") << " address:" << address << std::endl;
 }
 
 void Messages::releasedCleaning(std::string address, std::string netmask)
 {
-    log() << Logger::Info << rrlReleasedString << rrlReleasedCleaning
+    log() << Logger::Info << messages.at("released") << messages.at("cleaning")
           << " address:" << address << " netmask:" << netmask << std::endl;
 }
 
 void Messages::locked(RrlNode node)
 {
-    log() << Logger::Info << rrlLockedString << " address:"
+    log() << Logger::Info << messages.at("locked") << " address:"
           << node.address.toString() << " netmask:" << node.limit.netmask.toString();
     if(d_extra_logging) {
         log() << "; Ratio-requests counter: " << node.node->counter_ratio
@@ -495,17 +498,17 @@ void Messages::locked(RrlNode node)
 
 void Messages::error(const std::string &message)
 {
-    log() << Logger::Error << rrlErrorString << " " << message << std::endl;
+    log() << Logger::Error << messages["error"] << " " << message << std::endl;
 }
 
 void Messages::error(const std::string &message1, const std::string &message2)
 {
-    log() << Logger::Error << rrlErrorString << " " << message1 << " " << message2 << std::endl;
+    log() << Logger::Error << messages["error"] << " " << message1 << " " << message2 << std::endl;
 }
 
 void Messages::info(const std::string &message)
 {
-    log() << Logger::Info << rrlMessageString << " " << message << std::endl;
+    log() << Logger::Info << messages["message"] << " " << message << std::endl;
 }
 
 SingleLimit Limits::findLimit(const ComboAddress &address)

@@ -57,30 +57,24 @@ struct Cleaning : public RrlImplContaining{
 
 typedef std::map<Netmask, boost::shared_ptr<InternalNode> > RrlMap;
 
-class Messages : public RrlImplContaining {
-    static string rrlMessageString;
-    static string rrlErrorString;
-    static string rrlLockedString;
-    static string rrlReleasedString;
-    static string rrlReleasedCleaning;
-
+class Messages : public RrlImplContaining
+{
     boost::shared_ptr<Logger> d_logger;
     bool d_extra_logging;
-
-public:
-    Messages(RrlIpTableImpl* im) : RrlImplContaining(im), d_extra_logging(false) { }
+    std::map<string, string> messages;
 
     Logger& log();
+
+public:
+    Messages(RrlIpTableImpl* im);
 
     void init();
 
     void released(std::string address);
     void releasedCleaning(std::string address, std::string netmask = "");
     void locked(RrlNode node);
-
     void error(const std::string& message);
     void error(const std::string& message1, const std::string& message2);
-
     void info(const std::string& message);
 };
 
