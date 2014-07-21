@@ -378,6 +378,8 @@ bool RrlIpTableImpl::timeToClean() const
 
 void RrlIpTableImpl::cleanRrlNodes()
 {
+    log() << Logger::Info << rrlMessageString << " cleaning rrl cache" << std::endl;
+
     switch(d_cleaning.mode)
     {
     case RrlCleaning::Off:return;
@@ -410,9 +412,10 @@ void RrlIpTableImpl::cleanRrlNodes()
         if(d_request_counter >= d_cleaning.remove_every_n_request)
         {
             d_request_counter = 0;
+            Time border = boost::posix_time::microsec_clock::local_time() -
+                    boost::posix_time::milliseconds(d_cleaning.remove_if_older);
+
             for(RrlMap::iterator it = d_data.begin(); it != d_data.end();) {
-                Time border = boost::posix_time::microsec_clock::local_time() -
-                        boost::posix_time::milliseconds(d_cleaning.remove_if_older);
                 InternalNode& node = *it->second;
 
                 if(node.wasLocked() && node.block_till < now()) {
@@ -420,8 +423,10 @@ void RrlIpTableImpl::cleanRrlNodes()
                     showReleasedMessage(it->first.toString());
                 }
 
+                RrlMap::iterator i = it++;
                 if(node.last_request_time < border && !node.blocked)
-                    d_data.erase(it++);
+                    d_data.erase(i);
+
             }
         }
         ;break;
