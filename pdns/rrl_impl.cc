@@ -179,6 +179,7 @@ void Messages::init()
 void RrlIpTableImpl::setMode(Mode mode)
 {
     d_mode = mode;
+    d_messages.info("Mode: " + Mode::toString(d_mode));
 }
 
 RrlMap::iterator RrlIpTableImpl::get(const ComboAddress &addr)
