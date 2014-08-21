@@ -110,7 +110,13 @@ install: build-stamp
 	$(SBINDIR)/pdns_recursor --config > $(SYSCONFDIR)/recursor.conf-dist
 	-mkdir -p $(DESTDIR)usr/share/man/man1
 	cp $(DOCDIR)/pdns_recursor.1 $(DOCDIR)/rec_control.1 $(DESTDIR)usr/share/man/man1
-	$(OS_SPECIFIC_INSTALL)	
+	$(OS_SPECIFIC_INSTALL)
+	-mkdir -p $(DESTDIR)/etc/logcheck/ignore.d.server
+	-mkdir -p $(DESTDIR)/etc/default
+	cp pdns-recursor_logcheck $(DESTDIR)/etc/logcheck/ignore.d.server/pdns-recursor
+	cp pdns-recursor_default $(DESTDIR)/etc/powerdns/pdns-recursor
+	cp pdns-recursor.init.d $(DESTDIR)/etc/init.d/pdns-recursor
+	
 
 debug-install: build-stamp
 	-mkdir -p $(SBINDIR)
