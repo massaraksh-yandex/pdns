@@ -1,0 +1,36 @@
+#!/bin/sh
+#
+# Add an error handler to catch up with a fault in the pdns-recursor script.
+
+set -e
+
+# Set the old version.
+MODE=$1
+OLDVERSION=$2
+
+# Init script has errors in previous versions.
+initscript_error() {
+
+	# Versions older then 3.2-4 have a bug in the initscript.
+	if dpkg --compare-versions "$OLDVERSION" lt-nl "3.2-4" &&
+		[ "$MODE" = "failed-upgrade" ]; then
+
+		return 0
+	fi
+
+	return $1
+}
+
+# Automatically added by dh_installinit
+if [ -x "/etc/init.d/pdns-recursor" ]; then
+	if [ -x "`which invoke-rc.d 2>/dev/null`" ]; then
+		invoke-rc.d pdns-recursor stop || initscript_error
+	else
+		/etc/init.d/pdns-recursor stop || initscript_error
+	fi
+fi
+# End automatically added section
+
+
+exit 0
+
