@@ -1977,11 +1977,6 @@ try
     if(!(counter%500)) {
       MT->makeThread(houseKeeping, 0);
     }
-#ifdef WITH_RRL
-    if(rrlIpTable().timeToClean()) {
-        MT->makeThread(Rrl::cleanRrlCache, 0);
-    }
-#endif
 
     if(!(counter%55)) {
       typedef vector<pair<int, FDMultiplexer::funcparam_t> > expired_t;
@@ -2004,6 +1999,12 @@ try
     Utility::gettimeofday(&g_now, 0);
     t_fdm->run(&g_now);
     // 'run' updates g_now for us
+
+#ifdef WITH_RRL
+    if(rrlIpTable().timeToClean()) {
+        MT->makeThread(Rrl::cleanRrlCache, 0);
+    }
+#endif
 
     if(listenOnTCP) {
       if(TCPConnection::getCurrentConnections() > maxTcpClients) {  // shutdown, too many connections

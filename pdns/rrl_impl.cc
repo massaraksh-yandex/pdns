@@ -195,6 +195,17 @@ void RrlIpTableImpl::showReleasedMessage(const std::string& address)
           << " address:" << address << std::endl;
 }
 
+void RrlIpTableImpl::releaseNode(InternalNode &node, const string& address, const string& netmask)
+{
+    node.blocked = false;
+    node.block_till = Time();
+    d_locked_nodes--;
+    if(netmask.empty())
+        showReleasedMessage(address);
+    else
+        showReleasedMessage(address, netmask);
+}
+
 RrlMap::iterator RrlIpTableImpl::get(const ComboAddress &addr)
 {
     return d_data.find(truncateAddress(addr));
@@ -239,10 +250,8 @@ bool RrlIpTableImpl::decreaseCounters(RrlNode& node)
 
     if(!tryBlock(node)) {
         if (rin.blocked) {
-            d_locked_nodes--;
-            showReleasedMessage(node.address.toString(), node.limit.netmask.toString());
+            releaseNode(rin, node.address.toString(), node.limit.netmask.toString());
         }
-        rin.blocked = false;
     }
 
     return rin.blocked;
@@ -292,6 +301,7 @@ bool RrlIpTableImpl::tryBlock(RrlNode node)
     }
 
     if (res && !iter->blocked) {
+        iter->blocked = true;
         d_locked_nodes++;
         log() << Logger::Info << rrlLockedString << " address:"
               << node.address.toString() << " netmask:" << node.limit.netmask.toString();
@@ -384,52 +394,46 @@ void RrlIpTableImpl::cleanRrlNodes()
     {
     case RrlCleaning::Off:return;
     case RrlCleaning::LargerThan:
-        if(d_data.size() > d_cleaning.remove_if_larger)
-        {
-            std::priority_queue<RrlMap::iterator, std::deque<RrlMap::iterator>, SortRrlNodes> queue;
+    {
+        std::priority_queue<RrlMap::iterator, std::deque<RrlMap::iterator>, SortRrlNodes> queue;
 
-            for(RrlMap::iterator it = d_data.begin(); it != d_data.end(); it++) {
-                InternalNode& node = *it->second;
-                if(node.wasLocked() && node.block_till < now()) {
-                    node.blocked = false;
-                    showReleasedMessage(it->first.toString());
-                }
-
-                if(!node.blocked)
-                    queue.push(it);
+        for(RrlMap::iterator it = d_data.begin(); it != d_data.end(); it++) {
+            InternalNode& node = *it->second;
+            if(node.wasLocked() && node.block_till < now()) {
+                releaseNode(node, it->first.toString(), "");
             }
 
-            int counter = 0;
-            int max = d_cleaning.remove_n_percent_nodes * queue.size();
-            while(!queue.empty() && (counter < max)) {
-                d_data.erase(queue.top());
-                queue.pop();
-                counter++;
-            }
+            if(!node.blocked)
+                queue.push(it);
         }
-        ;break;
+
+        int counter = 0;
+        int max = d_cleaning.remove_n_percent_nodes * queue.size();
+        while(!queue.empty() && (counter < max)) {
+            d_data.erase(queue.top());
+            queue.pop();
+            counter++;
+        }
+    };break;
     case RrlCleaning::RemoveOld:
-        if(d_request_counter >= d_cleaning.remove_every_n_request)
-        {
-            d_request_counter = 0;
-            Time border = boost::posix_time::microsec_clock::local_time() -
-                    boost::posix_time::milliseconds(d_cleaning.remove_if_older);
+    {
+        d_request_counter = 0;
+        Time border = boost::posix_time::microsec_clock::local_time() -
+                boost::posix_time::milliseconds(d_cleaning.remove_if_older);
 
-            for(RrlMap::iterator it = d_data.begin(); it != d_data.end();) {
-                InternalNode& node = *it->second;
+        for(RrlMap::iterator it = d_data.begin(); it != d_data.end();) {
+            InternalNode& node = *it->second;
 
-                if(node.wasLocked() && node.block_till < now()) {
-                    node.blocked = false;
-                    showReleasedMessage(it->first.toString());
-                }
-
-                RrlMap::iterator i = it++;
-                if(node.last_request_time < border && !node.blocked)
-                    d_data.erase(i);
-
+            if(node.wasLocked() && node.block_till < now()) {
+                releaseNode(node, it->first.toString(), "");
             }
+
+            RrlMap::iterator i = it++;
+            if(node.last_request_time < border && !node.blocked)
+                d_data.erase(i);
+
         }
-        ;break;
+    };break;
     }
 }
 
