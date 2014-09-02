@@ -69,6 +69,8 @@ class RrlIpTableImpl
   void showReleasedMessage(const std::string& address, const std::string& netmask);
   void showReleasedMessage(const std::string& address);
 
+  void releaseNode(InternalNode &node, const string &address, const string &netmask);
+
 public:
   RrlIpTableImpl();
   RrlIpTableImpl(Mode mode);
