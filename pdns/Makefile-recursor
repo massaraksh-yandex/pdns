@@ -1,7 +1,7 @@
 # user editable stuff:
 DESTDIR=/
-SBINDIR=$(DESTDIR)sbin
-BINDIR=$(DESTDIR)bin
+SBINDIR=$(DESTDIR)usr/sbin
+BINDIR=$(DESTDIR)usr/bin
 SYSCONFDIR=$(DESTDIR)etc/powerdns
 LOCALSTATEDIR=$(DESTDIR)var/run
 DOCDIR=docs
