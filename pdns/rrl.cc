@@ -9,7 +9,7 @@ struct Mutex {
 
     Mutex(pthread_mutex_t& m) : _m(m) { }
     ~Mutex() { pthread_mutex_unlock(&_m); }
-    void lock() { pthread_mutex_lock(&_m); }
+
 };
 #else
 struct Mutex {
@@ -19,21 +19,22 @@ struct Mutex {
 };
 #endif
 
-RrlIpTable::RrlIpTable()
-{
+RrlIpTable::RrlIpTable() {
     d_impl.reset(new Rrl::RrlIpTableImpl());
     pthread_mutex_init(&d_lock, 0);
 }
 
-RrlNode RrlIpTable::getNode(const ComboAddress &addr, bool isAloneThread) {
-    Mutex mutex(d_lock);
-    if(!isAloneThread)
-        mutex.lock();
-
+RrlNode RrlIpTable::getNode(const ComboAddress &addr) {
     RrlNode node = d_impl->getNode(addr);
     d_impl->decreaseCounters(node);
 
     return node;
+}
+
+RrlNode RrlIpTable::getNodeAndLock(const ComboAddress &addr) {
+    Mutex mutex(d_lock);
+
+    return getNode(addr);
 }
 
 bool RrlIpTable::dropQueries() const {
@@ -44,8 +45,7 @@ bool RrlIpTable::enabled() const {
     return d_impl->enabled();
 }
 
-bool RrlIpTable::timeToClean() const
-{
+bool RrlIpTable::timeToClean() const {
     return d_impl->timeToClean();
 }
 
@@ -58,7 +58,6 @@ std::string RrlIpTable::reloadWhiteList(std::vector<std::string>::const_iterator
     }
 
     Mutex mutex(d_lock);
-    mutex.lock();
     string res = d_impl->reloadWhiteList(*begin);
 
     return res;
@@ -73,7 +72,6 @@ std::string RrlIpTable::reloadSpecialLimits(std::vector<std::string>::const_iter
     }
 
     Mutex mutex(d_lock);
-    mutex.lock();
     string res = d_impl->reloadSpecialLimits(*begin);
 
     return res;
@@ -102,7 +100,6 @@ std::string RrlIpTable::setRrlMode(std::vector<std::string>::const_iterator begi
         << Rrl::Mode::toString(d_impl->mode()) << "\n";
 
     Mutex mutex(d_lock);
-    mutex.lock();
     if(d_impl->mode() == Rrl::Mode::Off || newMode == Rrl::Mode::Off)
         d_impl.reset(new Rrl::RrlIpTableImpl(newMode));
     else
@@ -115,11 +112,11 @@ std::string RrlIpTable::information() const {
     return d_impl->information();
 }
 
-bool RrlNode::checkState() const
-{ return rrlIpTable().d_impl->mode().type != Rrl::Mode::LogOnly; }
+bool RrlNode::checkState() const {
+    return rrlIpTable().d_impl->mode().type != Rrl::Mode::LogOnly;
+}
 
-bool RrlNode::update(QType type)
-{
+bool RrlNode::update(QType type) {
     RrlIpTable& table = rrlIpTable();
     if(!table.enabled() || !valid())
       return false;
@@ -133,8 +130,7 @@ bool RrlNode::update(QType type)
     return false;
 }
 
-bool RrlNode::update(double ratio)
-{
+bool RrlNode::update(double ratio) {
     RrlIpTable& table = rrlIpTable();
     if(!table.enabled() || !valid())
       return false;
@@ -148,8 +144,7 @@ bool RrlNode::update(double ratio)
     return false;
 }
 
-bool RrlNode::blocked() const
-{
+bool RrlNode::blocked() const {
     if(!rrlIpTable().enabled() || isInWhiteList)
       return false;
 
@@ -159,9 +154,9 @@ bool RrlNode::blocked() const
 }
 
 namespace Rrl {
-void cleanRrlCache(void*)
-{
+void cleanRrlCache(void*) {
     rrlIpTable().d_impl->cleanRrlNodes();
 }
+
 }
 #endif // WITH_RRL
