@@ -23,7 +23,9 @@ class RrlIpTable
 public:
   RrlIpTable();
 
-  RrlNode getNode(const ComboAddress& addr, bool isAloneThread);
+  RrlNode getNode(const ComboAddress& addr);
+  RrlNode getNodeAndLock(const ComboAddress& addr);
+
 
   bool dropQueries() const;
   bool enabled() const;

@@ -617,7 +617,7 @@ void startDoResolve(void *p)
       }
 
 #ifdef WITH_RRL
-      RrlNode node = rrlIpTable().getNode(dc->d_remote, true);
+      RrlNode node = rrlIpTable().getNode(dc->d_remote);
       node.update((double)packet.size() / dc->d_mdp.d_len);
       node.update(QType(dc->d_mdp.d_qtype));
 
@@ -873,7 +873,7 @@ string* doProcessUDPQuestion(const std::string& question, const ComboAddress& fr
       g_stats.packetCacheHits++;
       SyncRes::s_queries++;
 #ifdef WITH_RRL
-      RrlNode node = rrlIpTable().getNode(fromaddr, false);
+      RrlNode node = rrlIpTable().getNodeAndLock(fromaddr);
 
       node.update((double)response.size() / question.size());
       node.update(QType(dc->d_mdp.d_qtype));
