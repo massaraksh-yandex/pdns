@@ -1,5 +1,5 @@
-pdns-recursor-3.5.2 (120820141400-2) unstable; urgency=low
+pdns-recursor-3.5.2 (221020141400) unstable; urgency=low
 
   * PowerDNS with RRL 
 
- -- Alexander Mironochev <massaraksh@yandex-team.ru>  Mon, 18 Aug 2014 19:14:56 +0400
+ -- Alexander Mironochev <massaraksh@yandex-team.ru>  Mon, 22 Oct 2014 19:14:56 +0400
