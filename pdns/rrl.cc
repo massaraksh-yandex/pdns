@@ -3,7 +3,6 @@
 
 #ifdef WITH_RRL
 
-#ifndef NO_MUTEX
 struct Mutex {
     pthread_mutex_t& _m;
 
@@ -11,13 +10,6 @@ struct Mutex {
     ~Mutex() { pthread_mutex_unlock(&_m); }
 
 };
-#else
-struct Mutex {
-    Mutex(pthread_mutex_t& m) { }
-    ~Mutex() { }
-    void lock() { }
-};
-#endif
 
 RrlIpTable::RrlIpTable() {
     d_impl.reset(new Rrl::RrlIpTableImpl());
