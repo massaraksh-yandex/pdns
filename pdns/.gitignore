@@ -46,3 +46,17 @@ version_generated.h
 /test-suite.log
 /testrunner.log
 /testrunner.trs
+../CMakeLists.txt
+CMakeCache.txt
+CMakeFiles/
+CMakeLists.txt.user
+build-stamp
+cmake_install.cmake
+install_manifest.txt
+pdns-recursor.cbp
+pdns_hw
+recursor.conf-dist
+recursor.config
+recursor.creator*
+recursor.files
+recursor.includes
