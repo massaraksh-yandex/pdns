@@ -72,7 +72,9 @@ public:
   void throttle(time_t now, const Thing& t, unsigned int ttl=0, unsigned int tries=0) 
   {
     typename cont_t::iterator i=d_cont.find(t);
-    entry e={ now+(ttl ? ttl : d_ttl), tries ? tries : d_limit};
+    entry e;
+    e.ttd = now+(ttl ? ttl : d_ttl);
+    e.count = tries ? tries : d_limit;
 
     if(i==d_cont.end()) {
       d_cont[t]=e;
