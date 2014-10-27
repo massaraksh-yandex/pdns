@@ -1,7 +1,8 @@
 cmake_minimum_required (VERSION 2.8)
 project(pdns-recursor)
 
-set(CMAKE_BUILD_TYPE Release)
+#set(CMAKE_BUILD_TYPE Release)
+set(CMAKE_BUILD_TYPE Debug)
 
 set(SBINDIR "${DESTDIR}/usr/sbin")
 set(BINDIR ${DESTDIR}/usr/bin)
