@@ -51,8 +51,8 @@ struct InternalNode
 {
    Time block_till;
    Time last_request_time;
-   u_int64_t counter_ratio;
-   u_int64_t counter_types;
+   AtomicCounter counter_ratio;
+   AtomicCounter counter_types;
    bool blocked;
 
    InternalNode() : block_till(), last_request_time(), counter_ratio(0),

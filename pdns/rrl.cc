@@ -115,7 +115,7 @@ bool RrlNode::update(QType type) {
 
     node->last_request_time = boost::posix_time::microsec_clock::local_time();
     if(limit.types.count(type) && valid()) {
-      node->counter_types++;
+      ++node->counter_types;
       node->blocked = table.d_impl->tryBlock(*this);
       return node->blocked && checkState();
     }
@@ -129,7 +129,7 @@ bool RrlNode::update(double ratio) {
 
     node->last_request_time = boost::posix_time::microsec_clock::local_time();
     if(ratio >= limit.ratio) {
-      node->counter_ratio++;
+      ++node->counter_ratio;
       node->blocked = table.d_impl->tryBlock(*this);
       return node->blocked && checkState();
     }

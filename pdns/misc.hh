@@ -359,6 +359,24 @@ public:
       return atomic_exchange_and_add( &value_, 0);
     }
 
+    AtomicCounter& operator+=(int val)
+    {
+      atomic_exchange_and_add( &value_, val);
+      return *this;
+    }
+
+    AtomicCounter& operator-=(int val)
+    {
+      atomic_exchange_and_add( &value_, -val);
+      return *this;
+    }
+
+    AtomicCounter& operator=(unsigned val)
+    {
+      value_ = val;
+      return *this;
+    }
+
 private:
     AtomicCounter(AtomicCounter const &);
     AtomicCounter &operator=(AtomicCounter const &);
