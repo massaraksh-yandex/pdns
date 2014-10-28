@@ -6,9 +6,8 @@
 struct Mutex {
     pthread_mutex_t& _m;
 
-    Mutex(pthread_mutex_t& m) : _m(m) { }
+    Mutex(pthread_mutex_t& m) : _m(m) { pthread_mutex_lock(&_m); }
     ~Mutex() { pthread_mutex_unlock(&_m); }
-
 };
 
 RrlIpTable::RrlIpTable() {

@@ -46,9 +46,6 @@ dns_random.cc ext/polarssl-1.3.2/library/aes.c ext/polarssl-1.3.2/library/padloc
 lua-pdns.cc lua-recursor.cc randomhelper.cc recpacketcache.cc dns.cc
 reczones.cc base32.cc nsecrecords.cc json.cc rrl_impl.cc rrl.cc json_ws.cc epollmplexer.cc)
 target_link_libraries(${RECURSOR} ${LUA_LIBRARY})
-add_custom_command(OUTPUT dnslabeltext.cc COMMAND ragel ARGS dnslabeltext.rl -o dnslabeltext.cc)
-add_custom_command(OUTPUT pdns_recursor COMMAND make ARGS -C docs pdns_recursor.1)
-add_custom_command(OUTPUT rec_control COMMAND make ARGS -C docs rec_control.1)
 
 add_custom_command(OUTPUT dnslabeltext.cc COMMAND ragel ARGS dnslabeltext.rl -o dnslabeltext.cc)
 
