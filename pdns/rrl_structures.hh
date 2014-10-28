@@ -10,6 +10,14 @@
 #include <map>
 #include "iputils.hh"
 
+struct Mutex {
+    pthread_mutex_t& _m;
+
+    Mutex(pthread_mutex_t& m) : _m(m) { }
+    ~Mutex() { pthread_mutex_unlock(&_m); }
+
+};
+
 namespace Rrl {
 struct Mode {
     enum Type {
@@ -54,10 +62,11 @@ struct InternalNode
    u_int64_t counter_ratio;
    u_int64_t counter_types;
    bool blocked;
+   pthread_mutex_t mutex;
 
    InternalNode() : block_till(), last_request_time(), counter_ratio(0),
      counter_types(0), blocked(false)
-   { }
+   { pthread_mutex_init(&mutex, 0); }
 
    bool wasLocked() const { return !block_till.is_not_a_date_time(); }
 };

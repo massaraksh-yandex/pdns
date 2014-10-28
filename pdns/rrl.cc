@@ -3,14 +3,6 @@
 
 #ifdef WITH_RRL
 
-struct Mutex {
-    pthread_mutex_t& _m;
-
-    Mutex(pthread_mutex_t& m) : _m(m) { }
-    ~Mutex() { pthread_mutex_unlock(&_m); }
-
-};
-
 RrlIpTable::RrlIpTable() {
     d_impl.reset(new Rrl::RrlIpTableImpl());
     pthread_mutex_init(&d_lock, 0);
@@ -24,7 +16,7 @@ RrlNode RrlIpTable::getNode(const ComboAddress &addr) {
 }
 
 RrlNode RrlIpTable::getNodeAndLock(const ComboAddress &addr) {
-    Mutex mutex(d_lock);
+//    Mutex mutex(d_lock);
 
     return getNode(addr);
 }
@@ -113,6 +105,7 @@ bool RrlNode::update(QType type) {
     if(!table.enabled() || !valid())
       return false;
 
+    Mutex mutex(node->mutex);
     node->last_request_time = boost::posix_time::microsec_clock::local_time();
     if(limit.types.count(type) && valid()) {
       node->counter_types++;
@@ -127,6 +120,7 @@ bool RrlNode::update(double ratio) {
     if(!table.enabled() || !valid())
       return false;
 
+    Mutex mutex(node->mutex);
     node->last_request_time = boost::posix_time::microsec_clock::local_time();
     if(ratio >= limit.ratio) {
       node->counter_ratio++;
