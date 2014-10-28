@@ -236,6 +236,7 @@ bool RrlIpTableImpl::decreaseCounters(RrlNode& node)
     u_int64_t decRatio = iDiff * lim.limit_ratio_number;
     u_int64_t decTypes = iDiff * lim.limit_types_number;
 
+    Mutex m(rin.mutex);
     if (rin.counter_ratio > decRatio) {
         rin.counter_ratio -= decRatio;
     } else {
