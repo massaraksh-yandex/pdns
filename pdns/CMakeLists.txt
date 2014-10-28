@@ -21,7 +21,6 @@ find_library(LUA_LIBRARY NAMES lua5.1)
 
 add_definitions(-DLOCALSTATEDIR="${LOCALSTATEDIR}")
 add_definitions(-DSYSCONFDIR="${SYSCONFDIR}")
-add_definitions(-DVERSION="${VERSION}")
 add_definitions(-D_GNU_SOURCE -DHAVE_STRCASESTR -DPDNS_ENABLE_LUA -DHAVE_LUA)
 
 set(CMAKE_C_FLAGS_DEBUG "${CMAKE_C_FLAGS_DEBUG} -O0 -pthread -Wall -g")
