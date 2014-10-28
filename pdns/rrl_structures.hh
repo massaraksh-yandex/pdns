@@ -12,10 +12,11 @@
 
 struct Mutex {
     pthread_mutex_t& _m;
+    bool locked;
 
-    Mutex(pthread_mutex_t& m) : _m(m) { pthread_mutex_lock(&_m); }
-    ~Mutex() { pthread_mutex_unlock(&_m); }
-
+    Mutex(pthread_mutex_t& m) : _m(m), locked(false) { }
+    void lock() { pthread_mutex_lock(&_m); locked = true; }
+    ~Mutex() { if(locked)pthread_mutex_unlock(&_m); }
 };
 
 namespace Rrl {

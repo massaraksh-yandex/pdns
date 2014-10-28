@@ -42,6 +42,7 @@ std::string RrlIpTable::reloadWhiteList(std::vector<std::string>::const_iterator
     }
 
     Mutex mutex(d_lock);
+    mutex.lock();
     string res = d_impl->reloadWhiteList(*begin);
 
     return res;
@@ -56,6 +57,7 @@ std::string RrlIpTable::reloadSpecialLimits(std::vector<std::string>::const_iter
     }
 
     Mutex mutex(d_lock);
+    mutex.lock();
     string res = d_impl->reloadSpecialLimits(*begin);
 
     return res;
@@ -84,6 +86,7 @@ std::string RrlIpTable::setRrlMode(std::vector<std::string>::const_iterator begi
         << Rrl::Mode::toString(d_impl->mode()) << "\n";
 
     Mutex mutex(d_lock);
+    mutex.lock();
     if(d_impl->mode() == Rrl::Mode::Off || newMode == Rrl::Mode::Off)
         d_impl.reset(new Rrl::RrlIpTableImpl(newMode));
     else
@@ -106,6 +109,8 @@ bool RrlNode::update(QType type) {
       return false;
 
     Mutex mutex(node->mutex);
+    if(node.use_count() > 2)
+      mutex.lock();
     node->last_request_time = boost::posix_time::microsec_clock::local_time();
     if(limit.types.count(type) && valid()) {
       node->counter_types++;
@@ -121,6 +126,7 @@ bool RrlNode::update(double ratio) {
       return false;
 
     Mutex mutex(node->mutex);
+    mutex.lock();
     node->last_request_time = boost::posix_time::microsec_clock::local_time();
     if(ratio >= limit.ratio) {
       node->counter_ratio++;
