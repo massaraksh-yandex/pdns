@@ -73,6 +73,8 @@ struct InternalNode
 };
 typedef boost::shared_ptr<InternalNode> InternalNodePtr;
 
+typedef std::map<Netmask, boost::shared_ptr<InternalNode> > RrlMap;
+
 }
 
 struct RrlNode

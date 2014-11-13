@@ -32,8 +32,6 @@ struct RrlCleaning {
 
 namespace Rrl {
 
-typedef std::map<Netmask, boost::shared_ptr<InternalNode> > RrlMap;
-
 class RrlIpTableImpl
 {
   Mode   d_mode;
