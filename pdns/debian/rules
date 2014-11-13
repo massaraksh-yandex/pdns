@@ -9,8 +9,10 @@
 # Uncomment this to turn on verbose mode.
 #export DH_VERBOSE=1
 
-override_dh_auto_build:
-	@$(MAKE) -j$((( echo $(grep -c ^processor /proc/cpuinfo) ) - 1))
+override_dh_auto_clean:
+	rm -rf CMakeCache.txt CMakeFiles/
 
+override_dh_auto_configure:
+	cmake .
 %:
-	dh $@ 
+	dh $@ --parallel

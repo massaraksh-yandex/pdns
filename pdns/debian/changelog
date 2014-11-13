@@ -1,5 +1,5 @@
-pdns-recursor-3.5.2 (221020141400) unstable; urgency=low
+pdns-recursor-yandex (1.0) UNRELEASED; urgency=medium
 
-  * PowerDNS with RRL 
+  * RRL was added. pdns-recursor 3.5-2
 
- -- Alexander Mironochev <massaraksh@yandex-team.ru>  Mon, 22 Oct 2014 19:14:56 +0400
+ -- Alexander Mironochev <massaraksh@yandex-team.ru>  Thu, 13 Nov 2014 19:12:28 +0300

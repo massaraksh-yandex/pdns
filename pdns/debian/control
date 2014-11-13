@@ -1,11 +1,11 @@
-Source: pdns-recursor-3.5.2
+Source: pdns-recursor-yandex
 Section: nets
 Priority: extra
 Maintainer: Alexander Mironochev <massaraksh@yandex-team.ru>
-Build-Depends: debhelper (>= 7.0.0)
+Build-Depends: debhelper (>= 7.0.0), cmake (>= 2.8.0), asciidoc, ragel, g++ (>= 4.0.0)
 Standards-Version: 3.9.2
 
-Package: pdns-recursor-3.5.2
+Package: pdns-recursor-yandex
 Architecture: amd64
 Depends: libc6 (>= 2.4), libgcc1 (>= 1:4.1.1), liblua5.1-0, libstdc++6 (>= 4.4.0), lsb-base (>= 3.0-6), adduser, lua5.1, liblua5.1-socket2
 Recommends: pdns-doc
