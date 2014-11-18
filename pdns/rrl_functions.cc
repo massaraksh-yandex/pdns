@@ -5,7 +5,7 @@ namespace Rrl {
 
 void releaseNode(InternalNode& node)
 {
-    Mutex mutex(node.mutex);
+    Locker mutex(node.mutex);
     mutex.lock();
     node.reset();
 }

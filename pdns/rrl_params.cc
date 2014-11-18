@@ -41,7 +41,6 @@ void Params::registerParams()
 
     ::arg().setSwitch("rrl-enable-white-list", "Enable list of addresses, which cannot be blocked")  = "no";
     ::arg().set("rrl-white-list", "Path to white list") = "";
-//    ::arg().setSwitch("rrl-enable-special-limits", "Enable special conditions for some addresses")  = "no";
     ::arg().set("rrl-special-limits", "Path to file with special limits") = "";
     ::arg().set("rrl-cleaning-mode","The way to clean rrl nodes cache. Possible values: off, larger-than, remove-old") = "off";
     ::arg().set("rrl-clean-remove-if-larger","Only if rrl-cleaning-mode == larger-than. If rrl cache size is bigger than this value, the cleaning will been started") = "10000";

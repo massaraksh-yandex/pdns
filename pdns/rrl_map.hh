@@ -29,21 +29,21 @@ public:
 
     template<class Container>
     void remove(const Container& nodes) {
-        Mutex m(_mutex);
+        Locker m(_mutex);
         m.lock();
         for(typename Container::size_type i = 0; i < _map.size(); i++) {
             _map.erase(nodes[i]);
         }
     }
 
-    InternalNodePtr& addAdderess(const key_type& val) {
-        Mutex m(_mutex);
+    InternalNodePtr addAdderess(const key_type& key) {
+        Locker m(_mutex);
         m.lock();
-        return _map[val];
+        return _map.insert(value_type(key, boost::make_shared<InternalNode>())).first->second;
     }
 
     void clear() {
-        Mutex m(_mutex);
+        Locker m(_mutex);
         m.lock();
         _map.clear();
     }
@@ -69,10 +69,6 @@ public:
     unsigned lockedNodes() const { return _lockedNodes; }
 
     Map::size_type nodes() const { return _map.size(); }
-
-//    static StatsPtr make(Map& map) {
-//        return boost::make_shared<Stats>(map);
-//    }
 };
 
 }

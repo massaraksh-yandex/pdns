@@ -28,6 +28,8 @@ protected:
     virtual void postProcessingQueue(Queue& queue) = 0;
 
 public:
+    virtual ~Cleaning() { }
+
     void clean();
     virtual bool time() const = 0;
 
