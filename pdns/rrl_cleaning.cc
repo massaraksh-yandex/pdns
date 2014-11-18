@@ -8,7 +8,7 @@
 namespace Rrl {
 
 struct EmptyCleaning : public Cleaning {
-    EmptyCleaning(Map& map, LogPtr log, Stats& stats) : Cleaning(map, log, stats) { }
+    EmptyCleaning(Map& map) : Cleaning(map) { }
 
     bool time() const { return false; }
     bool needToDelete(InternalNode&) const { return false; }
@@ -27,14 +27,14 @@ struct LargerThan : public Cleaning {
     u_int32_t remove_n_percent_nodes;
     u_int32_t remove_if_larger;
 
-    LargerThan(Map& map, LogPtr log, Stats& stats)
-        : Cleaning(map, log, stats), remove_n_percent_nodes(0),
+    LargerThan(Map& map)
+        : Cleaning(map), remove_n_percent_nodes(0),
           remove_if_larger(0) {
         remove_n_percent_nodes = Params::toInt("rrl-clean-remove-n-percent-nodes");
         remove_if_larger = Params::toInt("rrl-clean-remove-if-larger");
     }
 
-    bool time() const { return _stats.nodes() > remove_if_larger; }
+    bool time() const { return _map.size() > remove_if_larger; }
 
     bool needToDelete(InternalNode& node) const { return !node.blocked; }
 
@@ -55,8 +55,8 @@ struct RemoveOld : public Cleaning {
     u_int32_t lastRequestsCounter;
     Time border;
 
-    RemoveOld(Map& map, LogPtr log, Stats& stats)
-        : Cleaning(map, log, stats), remove_every_n_request(0),
+    RemoveOld(Map& map)
+        : Cleaning(map), remove_every_n_request(0),
           remove_if_older(0), lastRequestsCounter(0) {
         remove_every_n_request = Params::toInt("rrl-clean-remove-every-n-request");
         remove_if_older = Params::toInt("rrl-clean-remove-if-older");
@@ -69,10 +69,10 @@ struct RemoveOld : public Cleaning {
     void onClean() {
         border = boost::posix_time::microsec_clock::local_time() -
                  boost::posix_time::milliseconds(remove_if_older);
-        lastRequestsCounter = _stats.requests();
+        lastRequestsCounter = Stats::global()->requests();
     }
 
-    bool time() const { return _stats.requests() - lastRequestsCounter > remove_every_n_request; }
+    bool time() const { return Stats::global()->requests() - lastRequestsCounter > remove_every_n_request; }
 };
 
 void Cleaning::tryUnlockNode(Map::iterator it)
@@ -81,14 +81,14 @@ void Cleaning::tryUnlockNode(Map::iterator it)
 
     if(node.wasLocked() && node.block_till < now()) {
         releaseNode(node);
-        _log->cleaning(it->first.toString());
+        Log::log().cleaning(it->first.toString());
     }
 }
 
 void Cleaning::clean()
 {
     Queue queue;
-    _log->message("cleaning rrl cache");
+    Log::log().message("cleaning rrl cache");
     onClean();
     for(Map::iterator it = _map.begin(); it != _map.end(); it++) {
         tryUnlockNode(it);
@@ -102,21 +102,21 @@ void Cleaning::clean()
     _map.remove(queue);
 }
 
-CleaningPtr Cleaning::make(Map& map, LogPtr log, Stats& stats)
+CleaningPtr Cleaning::make(Map& map)
 {
     std::string type = Params::toString("rrl-cleaning-mode");
 
     if(type == "off") {
-        return CleaningPtr(new EmptyCleaning(map, log, stats));
+        return CleaningPtr(new EmptyCleaning(map));
     } else if(type == "larger-than") {
-        return CleaningPtr(new LargerThan(map, log, stats));
+        return CleaningPtr(new LargerThan(map));
     } else if(type == "remove-old") {
-        return CleaningPtr(new RemoveOld(map, log, stats));
+        return CleaningPtr(new RemoveOld(map));
     } else {
         std::ostringstream str;
         str << "wrong cleaning mode == " << type << ". Rrl cleaning is off";
-        log->message(str.str());
-        return CleaningPtr(new EmptyCleaning(map, log, stats));
+        Log::log().error(str.str());
+        return CleaningPtr(new EmptyCleaning(map));
     }
 }
 

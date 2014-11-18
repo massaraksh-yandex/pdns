@@ -25,7 +25,7 @@
 #include <iostream>
 #include <fstream>
 #include <sstream>
-#include "config-recursor.h"
+#include "config.h"
 #include <boost/date_time/posix_time/posix_time_io.hpp>
 #ifndef WIN32
 # include <syslog.h>

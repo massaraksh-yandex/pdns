@@ -1,7 +1,7 @@
 #include "lua-pdns.hh"
 // #include "syncres.hh"
 #include <boost/foreach.hpp>
-#include "config-recursor.h"
+#include "config.h"
 
 #if !defined(HAVE_LUA)
 

@@ -9,14 +9,14 @@ namespace Rrl {
 
 struct Map
 {
-    typedef std::map<Netmask, InternalNodePtr > cont;
-    typedef cont::iterator iterator;
-    typedef cont::value_type value_type;
-    typedef cont::key_type key_type;
-    typedef cont::size_type size_type;
+    typedef std::map<Netmask, InternalNodePtr> Cont;
+    typedef Cont::iterator iterator;
+    typedef Cont::value_type value_type;
+    typedef Cont::key_type key_type;
+    typedef Cont::size_type size_type;
 
 private:
-    cont _map;
+    Cont _map;
     pthread_mutex_t _mutex;
 
 public:
@@ -27,49 +27,42 @@ public:
     iterator find(const key_type& netmask) { return _map.find(netmask); }
     size_type size() const { return _map.size(); }
 
-    template<class Container>
-    void remove(const Container& nodes) {
-        Locker m(_mutex);
-        m.lock();
-        for(typename Container::size_type i = 0; i < _map.size(); i++) {
-            _map.erase(nodes[i]);
-        }
-    }
+    InternalNodePtr addAdderess(const key_type& key);
 
-    InternalNodePtr addAdderess(const key_type& key) {
-        Locker m(_mutex);
-        m.lock();
-        return _map.insert(value_type(key, boost::make_shared<InternalNode>())).first->second;
-    }
-
-    void clear() {
-        Locker m(_mutex);
-        m.lock();
-        _map.clear();
-    }
+    void remove(const std::deque<Map::iterator>& nodes);
+    void asyncClear();
 };
-
 
 class Stats;
 typedef boost::shared_ptr<Stats> StatsPtr;
 
 class Stats {
-protected:
+    static StatsPtr _global;
+
     AtomicCounter _requests;
     AtomicCounter _lockedNodes;
     Map& _map;
 
-public:
     Stats(Map& map) : _map(map) { }
+public:
 
     void addRequest() { ++_requests; }
     void addLocked() { ++_lockedNodes; }
+    void decLocked() { --_lockedNodes; }
 
     unsigned requests() const { return _requests; }
     unsigned lockedNodes() const { return _lockedNodes; }
 
     Map::size_type nodes() const { return _map.size(); }
+
+    static StatsPtr setGlobal(Map& map) {
+        _global.reset(new Stats(map));
+        return _global;
+    }
+
+    static StatsPtr global() { return _global; }
 };
+
 
 }
 

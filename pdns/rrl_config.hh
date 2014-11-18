@@ -25,7 +25,6 @@ public:
 class Limits : public ConfigReloadable {
     std::vector<SingleLimit> _data;
     SingleLimit _default;
-    LogPtr _log;
 
     void parseRequestTypes(const std::string &str, std::set<QType> &types);
     void initDefault();
@@ -35,21 +34,20 @@ protected:
     void preParse(const std::string& pathToFile, boost::property_tree::ptree& tree);
 
 public:
-    Limits(LogPtr log);
+    Limits();
 
     SingleLimit get(const ComboAddress &address) const;
 };
 
 class Whitelist : public ConfigReloadable {
     std::set<Netmask> _data;
-    LogPtr _log;
 
 protected:
     void parse(boost::property_tree::ptree &tree);
     void preParse(const std::string &pathToFile, boost::property_tree::ptree &tree);
 
 public:
-    Whitelist(LogPtr log);
+    Whitelist();
 
     bool contains(const Netmask &netmask) const;
 };

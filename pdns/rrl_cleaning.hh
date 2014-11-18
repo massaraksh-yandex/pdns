@@ -16,10 +16,8 @@ class Cleaning {
 protected:
     typedef std::deque<Map::iterator> Queue;
     Map& _map;
-    LogPtr _log;
-    Stats& _stats;
 
-    Cleaning(Map& map, LogPtr log, Stats& stats) : _map(map), _log(log), _stats(stats) { }
+    Cleaning(Map& map) : _map(map){ }
 
     void tryUnlockNode(Map::iterator it);
 
@@ -33,7 +31,7 @@ public:
     void clean();
     virtual bool time() const = 0;
 
-    static CleaningPtr make(Map& map, LogPtr log, Stats& stats);
+    static CleaningPtr make(Map& map);
 };
 
 }
