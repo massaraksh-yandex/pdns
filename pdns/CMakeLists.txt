@@ -48,7 +48,7 @@ rec_channel.cc rec_channel_rec.cc selectmplexer.cc sillyrecords.cc
 dns_random.cc ext/polarssl-1.3.2/library/aes.c ext/polarssl-1.3.2/library/padlock.c dnslabeltext.cc
 lua-pdns.cc lua-recursor.cc randomhelper.cc recpacketcache.cc dns.cc
 reczones.cc base32.cc nsecrecords.cc json.cc json_ws.cc epollmplexer.cc
-rrl_impl.cc rrl.cc rrl_logger.cc rrl_cleaning.cc rrl_params.cc rrl_map.cc)
+rrl_impl.cc rrl.cc rrl_logger.cc rrl_cleaning.cc rrl_params.cc rrl_map.cc rrl_structures.cc rrl_limits.cc rrl_whitelist.cc rrl_functions.cc)
 target_link_libraries(${RECURSOR} ${LUA_LIBRARY})
 
 # Creating man-pages

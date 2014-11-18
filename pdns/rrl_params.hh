@@ -3,7 +3,7 @@
 
 #include <string>
 
-namespace Rrl{
+namespace Rrl {
 
 class Params
 {
