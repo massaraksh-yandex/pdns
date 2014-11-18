@@ -19,18 +19,9 @@
 #include "iputils.hh"
 #include "qtype.hh"
 #include "logger.hh"
+#include "rrl_params.hh"
 
 using std::string;
-
-bool operator==(const Netmask& a, const Netmask& b)
-{
-    return a.match(b.getNetwork());
-}
-
-bool operator<(const Netmask& a, const Netmask& b)
-{
-    return a.compare(&b.getNetwork());
-}
 
 namespace Rrl {
 
@@ -554,6 +545,143 @@ string RrlIpTableImpl::information() const
         << "total number of locked nodes: " << d_locked_nodes << '\n'
         << "size of white list: " << d_white_list.size() << '\n'
         << "size of limits: " << d_limits.size() << '\n';
+
+    return str.str();
+}
+
+RrlIpTableImplNew::RrlIpTableImplNew()
+    : _log(Log::make()), _stats(_map), _mode(Mode::Off)
+{
+    _cleaning = Cleaning::make(_map, _log, _stats);
+    _mode = Mode::fromString(Params::toString("rrl-mode"));
+}
+
+RrlIpTableImplNew::RrlIpTableImplNew(Mode mode)
+    : _log(Log::make()), _stats(_map), _mode(mode)
+{
+    _cleaning = Cleaning::make(_map, _log, _stats);
+}
+
+RrlNode RrlIpTableImplNew::getNode(const ComboAddress &addr)
+{
+    if(!enabled())
+        return RrlNode(InternalNodePtr(), addr, true, SingleLimit());
+
+    _stats.addRequest();
+    InternalNodePtr rinp;
+    Netmask address = _addressUtils.truncate(addr);
+
+    bool whiteList = _whitelist.contains(address);
+    Map::iterator i = _map.find(address);
+
+    if (i == _map.end()) {
+        rinp = _map.addAdderess(_addressUtils.truncate(addr));
+    } else {
+        rinp = i->second;
+    }
+
+    return RrlNode(rinp, addr, whiteList, _limits.get(addr));
+}
+
+bool RrlIpTableImplNew::decreaseCounters(RrlNode &node)
+{
+#define MINUS(value, numb) \
+    if (value > numb) { \
+        value -= numb; \
+    } else { \
+        value = 0; \
+    } \
+
+    if(!enabled() || !node.valid())
+        return false;
+
+    InternalNode& rin = *node.node;
+    if (rin.last_request_time.is_not_a_date_time())
+        return false;
+
+    SingleLimit& lim = node.limit;
+    boost::posix_time::time_duration diff = (now() - rin.last_request_time);
+    u_int64_t iDiff = diff.total_milliseconds() / lim.detection_period;
+    u_int64_t decRatio = iDiff * lim.limit_ratio_number;
+    u_int64_t decTypes = iDiff * lim.limit_types_number;
+
+    {
+        Mutex m(rin.mutex);
+        m.lock();
+        MINUS(rin.counter_ratio, decRatio);
+        MINUS(rin.counter_types, decTypes);
+    }
+
+    if(needBlock(rin, lim)) {
+        if(!rin.blocked) {
+            rin.block(node.limit.blocking_time);
+            _stats.addLocked();
+            _log->locked(node);
+        }
+    }
+    else {
+        if (rin.blocked) {
+            releaseNode(rin);
+            _log->released(node.address.toString(), node.limit.netmask.toString());
+        }
+    }
+
+#undef MINUS
+    return rin.blocked;
+}
+
+string RrlIpTableImplNew::reloadWhitelist(const std::string &pathToFile)
+{
+    if(!enabled()) {
+        return "Rrl is disabled";
+    }
+
+    string answer = _whitelist.reload(pathToFile);
+
+    if(!answer.empty()) {
+        return answer;
+    } else {
+        std::string message = "whitelist was reloaded\n";
+        _log->message(message);
+        return message;
+    }
+}
+
+string RrlIpTableImplNew::reloadSpecialLimits(const std::string &pathToFile)
+{
+    if(!enabled()) {
+        return "Rrl is disabled\n";
+    }
+
+    string answer = _limits.reload(pathToFile);
+
+    if(!answer.empty()) {
+        return answer;
+    } else {
+        std::string message = "special limits was reloaded\n";
+        _log->message(message);
+        return message;
+    }
+}
+
+std::string RrlIpTableImplNew::setRrlMode(Mode mode)
+{
+    std::ostringstream str;
+    str << "mode: " << Mode::toString(mode);
+    _log->message(str.str());
+    _mode = mode;
+
+    return "";
+}
+
+string RrlIpTableImplNew::information() const
+{
+    std::ostringstream str;
+
+    str << "Rrl information:" << '\n'
+        << "rrl-mode: " << Mode::toString(_mode) << '\n'
+        << "total number of nodes: " << _stats.nodes() << '\n'
+        << "total number of locked nodes: " << _stats.lockedNodes() << '\n';;
 
     return str.str();
 }

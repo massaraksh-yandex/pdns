@@ -19,13 +19,13 @@ struct SilentLogger : public Log
     void cleaning(const std::string&) { }
 };
 
-class UsualLogger : public Log {
+class ColsoleLogger : public Log {
 protected:
     bool extra;
     std::auto_ptr<Logger> logger;
     virtual Logger& log() { return theL(); }
 public:
-    UsualLogger(const std::string& name, bool extraLogging)
+    ColsoleLogger(const std::string& name, bool extraLogging)
         :  Log(extraLogging), extra(extraLogging), logger(new Logger(name)) {
     }
 
@@ -61,27 +61,28 @@ public:
     }
 };
 
-struct CustomFileLogger : public UsualLogger {
-    CustomFileLogger(const std::string& name, const std::string& filename, bool extraLogging)
-        : UsualLogger(name, extraLogging) {
+struct FileLogger : public ColsoleLogger {
+    FileLogger(const std::string& name, const std::string& filename, bool extraLogging)
+        : ColsoleLogger(name, extraLogging) {
         logger->toFile(filename);
     }
 };
 
-std::auto_ptr<Log> Log::make()
+boost::shared_ptr<Log> Log::make()
 {
     bool extra = Params::toBool("rrl-enable-extra-logging");
-    switch(type) {
-    case Off:
-        return std::auto_ptr<Log>(new SilentLogger());
-        ;break;
-    case Usual:
-        return std::auto_ptr<Log>(new UsualLogger("rrl-log", extra));
-        ;break;
-    case CustomFile:
-        const std::string name = Params::toString("rrl-log-file");
-        return std::auto_ptr<Log>(new CustomFileLogger("rrl-log", name, extra));
-        break;
+    std::string type = Params::toString("rrl-enable-extra-logging");
+
+    if(type == "off") {
+        return boost::shared_ptr<Log>(new SilentLogger());
+    } else if(type == "console") {
+        return boost::shared_ptr<Log>(new ColsoleLogger("rrl-log", extra));
+    } else if(type == "file") {
+        std::string name = Params::toString("rrl-log-file");
+        return boost::shared_ptr<Log>(new FileLogger("rrl-log", name, extra));
+    } else {
+        theL() << Logger::Error << " unknown type of rrl logger = " << type << ". All messages will be logged by default logger.";
+        return boost::shared_ptr<Log>(new ColsoleLogger("rrl-log", extra));
     }
 }
 

@@ -11,6 +11,13 @@
 #include <set>
 #include <map>
 
+#include "rrl_map.hh"
+#include "rrl_cleaning.hh"
+#include "rrl_limits.hh"
+#include "rrl_logger.hh"
+#include "rrl_whitelist.hh"
+#include "rrl_functions.hh"
+
 struct RrlCleaning {
     enum CleaningMode {
         Off,
@@ -32,6 +39,41 @@ struct RrlCleaning {
 
 namespace Rrl {
 
+class RrlIpTableImplNew {
+    LogPtr _log;
+
+    Map _map;
+    Limits _limits;
+    Whitelist _whitelist;
+    Stats _stats;
+    AddressUtils _addressUtils;
+    Mode _mode;
+
+    CleaningPtr _cleaning;
+
+public:
+    RrlIpTableImplNew();
+    RrlIpTableImplNew(Mode mode);
+
+    RrlNode getNode(const ComboAddress& addr);
+
+    bool dropQueries() const { return _mode.type == Mode::Block; }
+    bool enabled() const { return _mode.type != Mode::Off; }
+
+    bool timeToClean() const {
+        return _cleaning->time();
+    }
+
+    bool decreaseCounters(RrlNode &node);
+
+    LogPtr log() const { return _log; }
+
+    string reloadWhitelist(const std::string &pathToFile);
+    string reloadSpecialLimits(const std::string &pathToFile);
+    string setRrlMode(Mode mode);
+    string information() const;
+};
+
 class RrlIpTableImpl
 {
   Mode   d_mode;
@@ -51,7 +93,6 @@ class RrlIpTableImpl
   boost::shared_ptr<Logger>           d_logger;
   bool              d_extra_logging;
 
-  Time now() const { return boost::posix_time::microsec_clock::local_time(); }
   RrlMap::iterator get(const ComboAddress& addr);
   Netmask truncateAddress(const ComboAddress& addr);
   int findLimitIndex(const ComboAddress &address);
@@ -96,6 +137,7 @@ public:
   static string rrlReleasedString;
   static string rrlReleasedCleaning;
 };
+
 }
 #endif // WITH_RRL
 

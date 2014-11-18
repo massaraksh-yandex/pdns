@@ -17,8 +17,8 @@ protected:
     static string ReleasedString;
     static string ReleasedCleaning;
 
-public:
     Log(bool extraLogging) { }
+public:
     virtual ~Log() { }
     virtual void error(const std::string&, const std::string& msg2) = 0;
     virtual void message(const std::string&) = 0;
@@ -26,14 +26,10 @@ public:
     virtual void released(const std::string&, const std::string&) = 0;
     virtual void cleaning(const std::string&) = 0;
 
-    enum LogType {
-        Off,
-        Usual,
-        CustomFile
-    };
-
-    std::auto_ptr<Log> make();
+    static boost::shared_ptr<Log> make();
 };
+
+typedef boost::shared_ptr<Log> LogPtr;
 
 }
 
