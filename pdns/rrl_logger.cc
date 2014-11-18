@@ -3,6 +3,7 @@
 
 namespace Rrl {
 
+LogPtr Log::_global;
 string Log::MessageString    = "[message]";
 string Log::ErrorString      = "[error]";
 string Log::LockedString     = "[locked]";
@@ -45,8 +46,8 @@ public:
             Rrl::InternalNode& intNode = *node.node;
             log() << "; Ratio-requests counter: " << intNode.counter_ratio
                   << "; Type-requests counter: " << intNode.counter_types
-                  << "; Ratio limit: " << node.limit.limit_ratio_number
-                  << "; Types limit: " << node.limit.limit_types_number;
+                  << "; Ratio limit: " << node.limit.ratio.limit
+                  << "; Types limit: " << node.limit.types.limit;
         }
         log() << "\n";
     }
@@ -71,19 +72,28 @@ struct FileLogger : public ColsoleLogger {
 boost::shared_ptr<Log> Log::make()
 {
     bool extra = Params::toBool("rrl-enable-extra-logging");
-    std::string type = Params::toString("rrl-enable-extra-logging");
+    std::string type = Params::toString("rrl-logging");
 
     if(type == "off") {
-        return boost::shared_ptr<Log>(new SilentLogger());
+        _global.reset(new SilentLogger());
     } else if(type == "console") {
-        return boost::shared_ptr<Log>(new ColsoleLogger("rrl-log", extra));
+        _global.reset(new ColsoleLogger("rrl-log", extra));
     } else if(type == "file") {
         std::string name = Params::toString("rrl-log-file");
-        return boost::shared_ptr<Log>(new FileLogger("rrl-log", name, extra));
+        _global.reset(new FileLogger("rrl-log", name, extra));
     } else {
         theL() << Logger::Error << " unknown type of rrl logger = " << type << ". All messages will be logged by default logger.";
-        return boost::shared_ptr<Log>(new ColsoleLogger("rrl-log", extra));
+        _global.reset(new ColsoleLogger("rrl-log", extra));
     }
+
+    return _global;
+}
+
+Log &Log::log() {
+    if(!_global.get())
+        return *make();
+
+    return *_global;
 }
 
 }

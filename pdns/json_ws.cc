@@ -26,7 +26,7 @@
 #include "arguments.hh"
 #include "misc.hh"
 #include "syncres.hh"
-#include "config-recursor.h"
+#include "config.h"
 
 JWebserver::JWebserver(FDMultiplexer* fdm) : d_fdm(fdm)
 {

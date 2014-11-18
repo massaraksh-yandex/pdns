@@ -65,7 +65,7 @@
 #include "logger.hh"
 #include "iputils.hh"
 #include "mplexer.hh"
-#include "config-recursor.h"
+#include "config.h"
 #include "lua-recursor.hh"
 #include "rrl_params.hh"
 #include "rrl.hh"
@@ -618,10 +618,12 @@ void startDoResolve(void *p)
       }
 
 #ifdef WITH_RRL
-      RrlNode node = rrlIpTable().getNode(dc->d_remote);
-      node.update((double)packet.size() / dc->d_mdp.d_len);
-      node.update(QType(dc->d_mdp.d_qtype));
+      PackageInfo info;
+      info.setRatio(packet.size(), dc->d_mdp.d_len);
+      info.setType(QType(dc->d_mdp.d_qtype));
 
+      RrlNode node = rrlIpTable().getNode(dc->d_remote);
+      node.update(info);
       if (node.blocked()) {
           pw.getHeader()->tc = 1;
           pw.truncate();
@@ -879,10 +881,12 @@ string* doProcessUDPQuestion(const std::string& question, const ComboAddress& fr
       g_stats.packetCacheHits++;
       SyncRes::s_queries++;
 #ifdef WITH_RRL
-      RrlNode node = rrlIpTable().getNode(fromaddr);
+      PackageInfo info;
+      info.setRatio(response.size(), question.size());
+      info.setType(QType(dc->d_mdp.d_qtype));
 
-      node.update((double)response.size() / question.size());
-      node.update(QType(dc->d_mdp.d_qtype));
+      RrlNode node = rrlIpTable().getNode(dc->d_remote);
+      node.update(info);
 
       if (node.blocked()) {
           vector<uint8_t> packet;

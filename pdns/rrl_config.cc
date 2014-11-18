@@ -63,23 +63,26 @@ void Limits::parseRequestTypes(const std::string &str, std::set<QType> &types)
 void Limits::initDefault()
 {
     _default.netmask = Netmask("0.0.0.0/32");
-    _default.limit_types_number = Params::toInt("rrl-limit-types-count");
-    _default.limit_ratio_number = Params::toInt("rrl-limit-ratio-count");
-    _default.ratio = Params::toDouble("rrl-ratio");
+    _default.types.limit = Params::toInt("rrl-limit-types-count");
+    _default.ratio.limit = Params::toInt("rrl-limit-ratio-count");
+
     _default.detection_period = Params::toInt("rrl-detection-period");
     _default.blocking_time = Params::toInt("rrl-blocking-period");
 
-    parseRequestTypes(Params::toString("rrl-types"), _default.types);
+    _default.ratio.value = Params::toDouble("rrl-ratio");
+    parseRequestTypes(Params::toString("rrl-types"), _default.types.value);
 }
 
-Limits::Limits(LogPtr log)
-    : ConfigReloadable("Special limits for netmasks were not set"),
-      _log(log)
+Limits::Limits() : ConfigReloadable("Special limits for netmasks were not set")
 {
     const std::string path = Params::toString("rrl-special-limits");
     if(!path.empty()) {
-        reload(path);
+        std::string status = reload(path);
+        if(!status.empty()) {
+            Log::log().error(status);
+        }
     }
+
     initDefault();
 }
 
@@ -104,12 +107,14 @@ void Limits::parse(boost::property_tree::ptree& tree)
         const ptree& values = node.second;
 
         limit.netmask = Netmask(values.get<string>("address"));
-        limit.limit_types_number = values.get<u_int32_t>("limit-types-count");
-        limit.limit_ratio_number = values.get<u_int32_t>("limit-ratio-count");
-        parseRequestTypes(values.get<string>("types"), limit.types);
-        limit.ratio = values.get<double>("ratio");
         limit.detection_period = values.get<u_int32_t>("detection-period");
         limit.blocking_time = values.get<u_int32_t>("blocking-period");
+
+        limit.types.limit = values.get<u_int32_t>("limit-types-count");
+        limit.ratio.limit = values.get<u_int32_t>("limit-ratio-count");
+
+        parseRequestTypes(values.get<string>("types"), limit.types.value);
+        limit.ratio.value = values.get<double>("ratio");
 
         newData.push_back(limit);
     }
@@ -121,14 +126,13 @@ void Limits::preParse(const std::string& pathToFile, boost::property_tree::ptree
     info_parser::read_info(pathToFile, tree);
 }
 
-Whitelist::Whitelist(LogPtr log)
-    : ConfigReloadable("Whitelist was not set"), _log(log)
+Whitelist::Whitelist() : ConfigReloadable("Whitelist was not set")
 {
     std::string path = Params::toString("rrl-enable-white-list");
     if(!path.empty()) {
         std::string status = reload(path);
         if(!status.empty()) {
-            _log->message(status);
+            Log::log().error(status);
         }
     }
 }
@@ -151,7 +155,5 @@ void Whitelist::parse(boost::property_tree::ptree &tree) {
     }
     _data.swap(newData);
 }
-
-
 
 }

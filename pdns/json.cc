@@ -9,7 +9,7 @@
 #include "rapidjson/document.h"
 #include "rapidjson/stringbuffer.h"
 #include "rapidjson/writer.h"
-#include "config-recursor.h"
+#include "config.h"
 #include <string.h>
 #include <ctype.h>
 #include <sys/types.h>

@@ -9,7 +9,12 @@
 
 namespace Rrl {
 
+class Log;
+typedef boost::shared_ptr<Log> LogPtr;
+
 class Log {
+    static LogPtr _global;
+
 protected:
     static string MessageString;
     static string ErrorString;
@@ -26,10 +31,11 @@ public:
     virtual void released(const std::string&, const std::string&) = 0;
     virtual void cleaning(const std::string&) = 0;
 
-    static boost::shared_ptr<Log> make();
+    static LogPtr make();
+    static Log& log();
+
 };
 
-typedef boost::shared_ptr<Log> LogPtr;
 
 }
 

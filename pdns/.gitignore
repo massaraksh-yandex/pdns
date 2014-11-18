@@ -1,7 +1,6 @@
 /Makefile.in
 /Makefile
 /buildroot.sh
-/config.h
 /mkbindist
 /pdns
 /showvar

@@ -2,6 +2,7 @@
 #include "arguments.hh"
 
 namespace Rrl {
+
 std::string Params::toString(const std::string& arg)
 {
     return ::arg()[arg];
@@ -47,7 +48,7 @@ void Params::registerParams()
     ::arg().set("rrl-clean-remove-n-percent-nodes","Only if rrl-cleaning-mode == larger-than. This value sets percentage of nodes that will be removed") = "10";
     ::arg().set("rrl-clean-remove-every-n-request","Only if rrl-cleaning-mode == remove-old. Every n-th request the cleaning will been started") = "1000";
     ::arg().set("rrl-clean-remove-if-older","Only if rrl-cleaning-mode == remove-old"
-                    "If the difference between current second and the last request value from node's ip "
+                "If the difference between current second and the last request value from node's ip "
                 "address is larger than this value, the node will be erased") = "86400";
 }
 

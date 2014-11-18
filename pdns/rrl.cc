@@ -5,15 +5,12 @@
 #ifdef WITH_RRL
 
 RrlIpTable::RrlIpTable() {
-    d_impl.reset(new Rrl::RrlIpTableImplNew());
+    d_impl.reset(new Rrl::RrlIpTableImpl());
     pthread_mutex_init(&d_lock, 0);
 }
 
 RrlNode RrlIpTable::getNode(const ComboAddress &addr) {
-    RrlNode node = d_impl->getNode(addr);
-    d_impl->decreaseCounters(node);
-
-    return node;
+    return d_impl->getNode(addr);
 }
 
 bool RrlIpTable::dropQueries() const {
@@ -32,13 +29,12 @@ std::string RrlIpTable::reloadWhiteList(std::vector<std::string>::const_iterator
     std::ostringstream str;
     if((end - begin) != 1) {
         str << "Trying to reload white list but passed wrong params list. size == " << (end - begin);
-        d_impl->log()->error(str.str());
+        Rrl::Log::log().error(str.str());
 
         return str.str() + "\n";
     }
 
     Locker mutex(d_lock);
-    mutex.lock();
     string res = d_impl->reloadWhitelist(*begin);
 
     return res;
@@ -48,12 +44,11 @@ std::string RrlIpTable::reloadSpecialLimits(std::vector<std::string>::const_iter
     std::ostringstream str;
     if((end - begin) != 1) {
         str << "Trying to reload special limits but passed wrong params list. size == " << (end - begin);
-        d_impl->log()->error(str.str());
+        Rrl::Log::log().error(str.str());
         return str.str() + "\n";
     }
 
     Locker mutex(d_lock);
-    mutex.lock();
     string res = d_impl->reloadSpecialLimits(*begin);
 
     return res;
@@ -63,7 +58,7 @@ std::string RrlIpTable::setRrlMode(std::vector<std::string>::const_iterator begi
     std::ostringstream str;
     if((end - begin) != 1) {
         str << "Trying to reset rrl mode but passed wrong params list. size == " << (end - begin);
-        d_impl->log()->error(str.str());
+        Rrl::Log::log().error(str.str());
         return str.str() + "\n";
     }
 
@@ -74,7 +69,7 @@ std::string RrlIpTable::setRrlMode(std::vector<std::string>::const_iterator begi
     catch(std::exception&)
     {
         str << "Trying to reset rrl mode but passed wrong param == " << *begin;
-        d_impl->log()->error(str.str());
+        Rrl::Log::log().error(str.str());
         return str.str() + "\n";
     }
 
@@ -82,10 +77,6 @@ std::string RrlIpTable::setRrlMode(std::vector<std::string>::const_iterator begi
         << Rrl::Mode::toString(d_impl->mode()) << "\n";
 
     Locker mutex(d_lock);
-    mutex.lock();
-//    if(d_impl->mode() == Rrl::Mode::Off || newMode == Rrl::Mode::Off)
-//        d_impl.reset(new Rrl::RrlIpTableImplNew(newMode));
-//    else
     d_impl->setMode(newMode);
 
     return str.str();
@@ -93,52 +84,6 @@ std::string RrlIpTable::setRrlMode(std::vector<std::string>::const_iterator begi
 
 std::string RrlIpTable::information() const {
     return d_impl->information();
-}
-
-bool RrlNode::checkState() const {
-    return rrlIpTable().d_impl->mode() != Rrl::Mode::LogOnly;
-}
-
-bool RrlNode::update(QType type) {
-    RrlIpTable& table = rrlIpTable();
-    if(!table.enabled() || !valid())
-      return false;
-
-    Locker mutex(node->mutex);
-    if(node.use_count() > 2)
-      mutex.lock();
-    node->last_request_time = boost::posix_time::microsec_clock::local_time();
-    if(limit.types.count(type) && valid()) {
-      node->counter_types++;
-      node->blocked = Rrl::needBlock(*node, limit);
-      return node->blocked && checkState();
-    }
-    return false;
-}
-
-bool RrlNode::update(double ratio) {
-    RrlIpTable& table = rrlIpTable();
-    if(!table.enabled() || !valid())
-      return false;
-
-    Locker mutex(node->mutex);
-    mutex.lock();
-    node->last_request_time = boost::posix_time::microsec_clock::local_time();
-    if(ratio >= limit.ratio) {
-      node->counter_ratio++;
-      node->blocked = Rrl::needBlock(*node, limit);
-      return node->blocked && checkState();
-    }
-    return false;
-}
-
-bool RrlNode::blocked() const {
-    if(!rrlIpTable().enabled() || isInWhiteList)
-      return false;
-
-    bool a = checkState();
-
-    return node->blocked && a;
 }
 
 namespace Rrl {

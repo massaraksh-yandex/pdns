@@ -1,119 +1,89 @@
 #ifndef RRLIPTABLESTRUCTURES_HH
 #define RRLIPTABLESTRUCTURES_HH
 
-#include "config-recursor.h"
+#include "config.h"
 #ifdef WITH_RRL
 
 #include <boost/date_time/posix_time/ptime.hpp>
 #include <boost/make_shared.hpp>
-#include <boost/date_time/gregorian/gregorian_io.hpp>
-#include <boost/date_time/posix_time/posix_time_io.hpp>
-#include <boost/date_time/posix_time/posix_time_duration.hpp>
-#include <boost/date_time/posix_time/posix_time.hpp>
-#include <set>
-#include <map>
 #include "iputils.hh"
+#include <set>
 
 namespace Rrl {
 
-class AddressUtils {
-    u_int8_t  ipv4_prefix_length;
-    u_int8_t  ipv6_prefix_length;
-public:
-    AddressUtils();
-
-    Netmask truncate(const ComboAddress& addr);
-};
-
-struct Mode {
-    enum Type {
-        Off,
-        LogOnly,
-        Truncate,
-        Block
-    };
-
-    Mode(Type tt = Off) : type(tt) {}
-
-    operator Mode() { return type; }
-
-    static Mode fromString(const string& str);
-    static string toString(Mode mode);
-
-private:
-    Type type;
-};
-
-inline bool operator ==(Mode m, Mode::Type t) { return m == t; }
-inline bool operator !=(Mode m, Mode::Type t) { return m != t; }
-
 typedef boost::posix_time::ptime Time;
 
-struct SingleLimit {
-  Netmask netmask;
+struct InternalNode {
+    Time block_till;
+    Time last_request_time;
+    u_int64_t counter_ratio;
+    u_int64_t counter_types;
+    bool blocked;
+    pthread_mutex_t mutex;
 
-  u_int32_t limit_ratio_number;
-  u_int32_t limit_types_number;
+    void reset();
+    void block(u_int32_t blockinPeriod);
 
-  std::set<QType> types;
-  double ratio;
+    InternalNode() : block_till(), last_request_time(), counter_ratio(0),
+        counter_types(0), blocked(false)
+    { pthread_mutex_init(&mutex, 0); }
 
-  u_int32_t detection_period;
-  u_int32_t blocking_time;
-};
-
-struct InternalNode
-{
-   Time block_till;
-   Time last_request_time;
-   u_int64_t counter_ratio;
-   u_int64_t counter_types;
-   bool blocked;
-   pthread_mutex_t mutex;
-
-   void reset();
-   void block(u_int32_t blockinPeriod);
-
-   InternalNode() : block_till(), last_request_time(), counter_ratio(0),
-     counter_types(0), blocked(false)
-   { pthread_mutex_init(&mutex, 0); }
-
-   bool wasLocked() const { return !block_till.is_not_a_date_time(); }
+    bool wasLocked() const { return !block_till.is_not_a_date_time(); }
 };
 typedef boost::shared_ptr<InternalNode> InternalNodePtr;
 
+struct SingleLimit {
+    struct LimitType {
+        std::set<QType> value;
+        u_int32_t limit;
+
+        bool operator()(QType val) { return value.count(val) > 0; }
+    };
+
+    struct LimitRatio {
+        double value;
+        u_int32_t limit;
+
+        bool operator()(double val) { return val > value; }
+    };
+
+    Netmask netmask;
+    u_int32_t detection_period;
+    u_int32_t blocking_time;
+
+    LimitType types;
+    LimitRatio ratio;
+};
+
 }
 
-class Locker {
-    pthread_mutex_t& _m;
-    bool locked;
-public:
+struct PackageInfo {
+    QType _type;
+    double _ratio;
 
-    Locker(pthread_mutex_t& m) : _m(m), locked(false) { }
-    void lock() { pthread_mutex_lock(&_m); locked = true; }
-    ~Locker() { if(locked) pthread_mutex_unlock(&_m); }
+    PackageInfo() : _ratio(0.0) { }
+
+    void setType(const QType& type) { _type = type; }
+    void setRatio(double response, double request) { _ratio = response / request; }
 };
 
 struct RrlNode
 {
-  bool isInWhiteList;
-  ComboAddress address;
-  Rrl::InternalNodePtr node;
-  Rrl::SingleLimit limit;
+    bool isInWhiteList;
+    ComboAddress address;
+    Rrl::InternalNodePtr node;
+    Rrl::SingleLimit limit;
 
-  bool checkState() const;
+    bool checkState() const;
 
 public:
-  RrlNode(Rrl::InternalNodePtr it, const ComboAddress& add, bool inWhiteList, const Rrl::SingleLimit& lim)
-    : isInWhiteList(inWhiteList), address(add), node(it), limit(lim)
-  { }
+    RrlNode(Rrl::InternalNodePtr it, const ComboAddress& add, bool inWhiteList, const Rrl::SingleLimit& lim)
+        : isInWhiteList(inWhiteList), address(add), node(it), limit(lim)
+    { }
 
-  bool update(QType type);
-  bool update(double ratio);
-
-  bool blocked() const;
-
-  bool valid() const { return (bool)node; }
+    void update(const PackageInfo& info);
+    bool blocked() const;
+    bool valid() const { return (bool)node; }
 };
 #endif // WITH_RRL
 
