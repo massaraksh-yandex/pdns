@@ -10,21 +10,20 @@
 
 namespace Rrl {
 void cleanRrlCache(void*);
-class RrlIpTableImpl;
+class RrlIpTableImplNew;
 }
 
 class RrlIpTable
 {
   friend class RrlNode;
   friend void Rrl::cleanRrlCache(void*);
-  boost::shared_ptr<Rrl::RrlIpTableImpl> d_impl;
+  boost::shared_ptr<Rrl::RrlIpTableImplNew> d_impl;
   pthread_mutex_t   d_lock;
 
 public:
   RrlIpTable();
 
   RrlNode getNode(const ComboAddress& addr);
-  RrlNode getNodeAndLock(const ComboAddress& addr);
 
   bool dropQueries() const;
   bool enabled() const;

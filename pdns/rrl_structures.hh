@@ -14,15 +14,6 @@
 #include <map>
 #include "iputils.hh"
 
-struct Mutex {
-    pthread_mutex_t& _m;
-    bool locked;
-
-    Mutex(pthread_mutex_t& m) : _m(m), locked(false) { }
-    void lock() { pthread_mutex_lock(&_m); locked = true; }
-    ~Mutex() { if(locked) pthread_mutex_unlock(&_m); }
-};
-
 namespace Rrl {
 
 class AddressUtils {
@@ -42,18 +33,19 @@ struct Mode {
         Block
     };
 
-    Type type;
+    Mode(Type tt = Off) : type(tt) {}
 
-    Mode() : type(Off) {}
-    Mode(Type tt) : type(tt) {}
-
-    Mode& operator =(Type tt) { type = tt; return *this; }
+    operator Mode() { return type; }
 
     static Mode fromString(const string& str);
     static string toString(Mode mode);
+
+private:
+    Type type;
 };
 
-inline bool operator ==(Mode m, Mode::Type t) { return m.type == t; }
+inline bool operator ==(Mode m, Mode::Type t) { return m == t; }
+inline bool operator !=(Mode m, Mode::Type t) { return m != t; }
 
 typedef boost::posix_time::ptime Time;
 
@@ -70,8 +62,6 @@ struct SingleLimit {
   u_int32_t blocking_time;
 };
 
-inline Time now() { return boost::posix_time::microsec_clock::local_time(); }
-
 struct InternalNode
 {
    Time block_till;
@@ -81,24 +71,8 @@ struct InternalNode
    bool blocked;
    pthread_mutex_t mutex;
 
-   void reset() {
-       Mutex m(mutex);
-       m.lock();
-
-       block_till = Time();
-       last_request_time = Time();
-       counter_ratio = 0;
-       counter_types = 0;
-       blocked = false;
-   }
-
-   void block(u_int32_t blockinPeriod) {
-       Mutex m(mutex);
-       m.lock();
-
-       blocked = true;
-       block_till = now() + boost::posix_time::milliseconds(blockinPeriod);
-   }
+   void reset();
+   void block(u_int32_t blockinPeriod);
 
    InternalNode() : block_till(), last_request_time(), counter_ratio(0),
      counter_types(0), blocked(false)
@@ -106,68 +80,19 @@ struct InternalNode
 
    bool wasLocked() const { return !block_till.is_not_a_date_time(); }
 };
-
-//struct Limit {
-//    u_int64_t level;
-//    u_int64_t max;
-
-//    Limit(u_int64_t m) : max(m) { }
-//};
-
-//struct TypeRuleWrapper {
-//    QType type;
-//    TypeRuleWrapper(const QType& t) : type(t) { }
-//};
-
-//struct TypeRule {
-//    std::set<QType> types;
-
-//    bool pass(const TypeRuleWrapper& t) const {
-//        return types.count(t.type) > 0;
-//    }
-//};
-
-//struct RatioRuleWrapper {
-//    double ratio;
-//    TypeRuleWrapper(int requestSize, int responseSize) : ratio(requestSize / responseSize) { }
-//};
-
-//struct RatioRule {
-//    double ratio;
-
-//    bool pass(const RatioRuleWrapper& r) const {
-//        return r.ratio > ratio;
-//    }
-//};
-
-//struct IntNode {
-//    Limit ratio;
-//    Limit type;
-
-//    RatioRule ratioRule;
-//    TypeRule typeRule;
-
-//    Time block_till;
-//    Time last_request_time;
-//};
-
 typedef boost::shared_ptr<InternalNode> InternalNodePtr;
 
-//bool tryBlock(RrlNode node);
-
-typedef std::map<Netmask, boost::shared_ptr<InternalNode> > RrlMap;
-
 }
 
-inline bool operator==(const Netmask& a, const Netmask& b)
-{
-    return a.match(b.getNetwork());
-}
+class Locker {
+    pthread_mutex_t& _m;
+    bool locked;
+public:
 
-inline bool operator<(const Netmask& a, const Netmask& b)
-{
-    return a.compare(&b.getNetwork());
-}
+    Locker(pthread_mutex_t& m) : _m(m), locked(false) { }
+    void lock() { pthread_mutex_lock(&_m); locked = true; }
+    ~Locker() { if(locked) pthread_mutex_unlock(&_m); }
+};
 
 struct RrlNode
 {

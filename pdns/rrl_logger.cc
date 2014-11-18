@@ -12,9 +12,9 @@ string Log::ReleasedCleaning = "[cleaning]";
 struct SilentLogger : public Log
 {
     SilentLogger() : Log(false) { }
-    void error(const std::string&, const std::string& msg2) { }
+    void error(const std::string&) { }
     void message(const std::string&) { }
-    void locked(const RrlNode& node) { }
+    void locked(const RrlNode&) { }
     void released(const std::string&, const std::string&) { }
     void cleaning(const std::string&) { }
 };
@@ -23,14 +23,14 @@ class ColsoleLogger : public Log {
 protected:
     bool extra;
     std::auto_ptr<Logger> logger;
-    virtual Logger& log() { return theL(); }
+    virtual Logger& log() { return *logger; }
 public:
     ColsoleLogger(const std::string& name, bool extraLogging)
         :  Log(extraLogging), extra(extraLogging), logger(new Logger(name)) {
     }
 
-    void error(const std::string& msg1, const std::string& msg2) {
-        log() << ErrorString << " " << msg1 << " " << msg2 << "\n";
+    void error(const std::string& msg) {
+        log() << ErrorString << " " << msg << "\n";
     }
 
     void message(const std::string& msg) {

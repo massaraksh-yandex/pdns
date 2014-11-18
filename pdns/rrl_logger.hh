@@ -17,10 +17,10 @@ protected:
     static string ReleasedString;
     static string ReleasedCleaning;
 
-    Log(bool extraLogging) { }
+    Log(bool /*extraLogging*/) { }
 public:
     virtual ~Log() { }
-    virtual void error(const std::string&, const std::string& msg2) = 0;
+    virtual void error(const std::string&) = 0;
     virtual void message(const std::string&) = 0;
     virtual void locked(const RrlNode& node) = 0;
     virtual void released(const std::string&, const std::string&) = 0;
