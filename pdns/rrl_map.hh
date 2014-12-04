@@ -61,9 +61,10 @@ public:
 
     void addRequest() { ++_requests; }
     void addLocked() { ++_lockedNodes; }
-    void decLocked() { --_lockedNodes; }
-    void dropLocked() { _lockedNodes.setToZero(); }
     void addTimeoutMutexes() { ++_timeoutMutexes; }
+
+    void decLocked() { --_lockedNodes; }
+    void reset() { _lockedNodes.setToZero(); _requests.setToZero(); }
 
     unsigned requests() const { return _requests; }
     unsigned lockedNodes() const { return _lockedNodes; }

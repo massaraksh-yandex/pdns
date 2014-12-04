@@ -140,7 +140,7 @@ std::string RrlIpTableImpl::setMode(Mode mode)
 
     if(_mode == Mode::Off) {
         _map.asyncClear();
-        Stats::global()->dropLocked();
+        Stats::global()->reset();
     }
 
     return "";
