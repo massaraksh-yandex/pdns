@@ -359,6 +359,11 @@ public:
       return atomic_exchange_and_add( &value_, 0);
     }
 
+    void setToZero()
+    {
+        atomic_exchange_and_add( &value_, value_ );
+    }
+
 private:
     AtomicCounter(AtomicCounter const &);
     AtomicCounter &operator=(AtomicCounter const &);
