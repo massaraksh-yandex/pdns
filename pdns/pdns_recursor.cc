@@ -885,7 +885,7 @@ string* doProcessUDPQuestion(const std::string& question, const ComboAddress& fr
       info.setRatio(response.size(), question.size());
       info.setType(QType(dc->d_mdp.d_qtype));
 
-      RrlNode node = rrlIpTable().getNode(dc->d_remote);
+      RrlNode node = rrlIpTable().getNode(fromaddr);
       node.update(info);
 
       if (node.blocked()) {

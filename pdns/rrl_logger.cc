@@ -22,50 +22,57 @@ struct SilentLogger : public Log
 
 class ColsoleLogger : public Log {
 protected:
-    bool extra;
-    std::auto_ptr<Logger> logger;
-    virtual Logger& log() { return *logger; }
+    std::string _prefix;
+    virtual Logger& log() { return theL(); }
 public:
-    ColsoleLogger(const std::string& name, bool extraLogging)
-        :  Log(extraLogging), extra(extraLogging), logger(new Logger(name)) {
+    ColsoleLogger(const std::string& prefix, bool extraLogging)
+        :  Log(extraLogging), _prefix(prefix) {
     }
 
     void error(const std::string& msg) {
-        log() << ErrorString << " " << msg << "\n";
+        log() << _prefix << ErrorString << " " << msg << std::endl;
     }
 
     void message(const std::string& msg) {
-        log() << MessageString << " " << msg << "\n";
+        log() << _prefix << MessageString << " " << msg << std::endl;
     }
 
     void locked(const RrlNode& node) {
-        log() << LockedString << " address: " << node.address.toString()
+        log() << _prefix << LockedString << " address: " << node.address.toString()
               << ", limit netmask: " << node.limit.netmask.toString();
 
-        if(extra) {
+        if(_extraLogging) {
             Rrl::InternalNode& intNode = *node.node;
             log() << "; Ratio-requests counter: " << intNode.counter_ratio
                   << "; Type-requests counter: " << intNode.counter_types
                   << "; Ratio limit: " << node.limit.ratio.limit
                   << "; Types limit: " << node.limit.types.limit;
         }
-        log() << "\n";
+        log() << std::endl;
     }
 
     void released(const std::string& addr, const std::string& limitNetmask) {
-        log() << ReleasedString << " address: " << addr
-              << ", limit netmask: " << limitNetmask << "\n";
+        log() << _prefix << ReleasedString << " address: " << addr
+              << ", limit netmask: " << limitNetmask << std::endl;
     }
 
     void cleaning(const std::string& addr) {
-        log() << ReleasedString << " address: " << addr << "\n";
+        log() << _prefix << ReleasedCleaning << " address: " << addr << std::endl;
     }
 };
 
 struct FileLogger : public ColsoleLogger {
+protected:
+    std::auto_ptr<Logger> logger;
+    Logger& log() { return *logger; }
+
+public:
     FileLogger(const std::string& name, const std::string& filename, bool extraLogging)
-        : ColsoleLogger(name, extraLogging) {
-        logger->toFile(filename);
+        : ColsoleLogger("", extraLogging), logger(new Logger(name)) {
+        bool res = logger->toFile(filename);
+        if(!res) {
+            theL() << Logger::Error << "[rrl-log] cannot open file " << filename << std::endl;
+        }
     }
 };
 
@@ -77,12 +84,12 @@ boost::shared_ptr<Log> Log::make()
     if(type == "off") {
         _global.reset(new SilentLogger());
     } else if(type == "console") {
-        _global.reset(new ColsoleLogger("rrl-log", extra));
+        _global.reset(new ColsoleLogger("[rrl-log] ", extra));
     } else if(type == "file") {
         std::string name = Params::toString("rrl-log-file");
         _global.reset(new FileLogger("rrl-log", name, extra));
     } else {
-        theL() << Logger::Error << " unknown type of rrl logger = " << type << ". All messages will be logged by default logger.";
+        theL() << Logger::Error << "[rrl-log] unknown type of rrl logger = " << type << ". All messages will be logged by default logger.";
         _global.reset(new ColsoleLogger("rrl-log", extra));
     }
 

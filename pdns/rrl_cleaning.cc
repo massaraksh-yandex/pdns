@@ -67,8 +67,7 @@ struct RemoveOld : public Cleaning {
     void postProcessingQueue(Queue&) { }
 
     void onClean() {
-        border = boost::posix_time::microsec_clock::local_time() -
-                 boost::posix_time::milliseconds(remove_if_older);
+        border = now() - boost::posix_time::milliseconds(remove_if_older);
         lastRequestsCounter = Stats::global()->requests();
     }
 
@@ -79,7 +78,7 @@ void Cleaning::tryUnlockNode(Map::iterator it)
 {
     InternalNode& node = *it->second;
 
-    if(node.wasLocked() && node.block_till < now()) {
+    if(node.wasLocked() && node.at_least_block_till < now()) {
         releaseNode(node);
         Log::log().cleaning(it->first.toString());
     }

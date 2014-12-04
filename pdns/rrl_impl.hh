@@ -68,6 +68,8 @@ public:
             return false;
     }
 
+    const Map& map() const { return _map; }
+
     void cleanRrlNodes() {
         _cleaning->clean();
     }
@@ -78,6 +80,7 @@ public:
     string reloadSpecialLimits(const std::string &pathToFile);
     string setMode(Mode mode);
     string information() const;
+    string dbDump();
 };
 
 }

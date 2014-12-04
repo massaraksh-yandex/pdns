@@ -21,10 +21,21 @@ void asyncClearMap(void* d) {
     delete data;
 }
 
-InternalNodePtr Map::addAdderess(const Map::key_type &key)
+InternalNodePtr Map::get(const key_type &key)
 {
-    Locker m(_mutex);
-    return _map.insert(value_type(key, boost::make_shared<InternalNode>())).first->second;
+    iterator it = _map.find(key);
+
+    TimedLocker locker(_mutex, 100);
+    if(it == end()) {
+        if(locker.successLock()) {
+            return _map.insert(value_type(key, boost::make_shared<InternalNode>())).first->second;
+        } else {
+            Stats::global()->addTimeoutMutexes();
+            return boost::make_shared<InternalNode>();
+        }
+    } else {
+        return it->second;
+    }
 }
 
 void Map::remove(const std::deque<Map::iterator> &nodes)
@@ -37,6 +48,20 @@ void Map::remove(const std::deque<Map::iterator> &nodes)
 
 void Map::asyncClear() {
     MT->makeThread(asyncClearMap, new MapWithMutex(&_map, &_mutex));
+}
+
+std::string Map::getDBDump()
+{
+    std::ostringstream res;
+
+    Locker lock(_mutex);
+
+    for(const_iterator it = begin(); it != end(); it++) {
+        const InternalNode& node = *it->second;
+        res << it->first.toString() << ": " << node.toString() << "\n";
+    }
+
+    return res.str();
 }
 
 }

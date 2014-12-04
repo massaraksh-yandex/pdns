@@ -21,8 +21,9 @@ protected:
     static string LockedString;
     static string ReleasedString;
     static string ReleasedCleaning;
+    bool _extraLogging;
 
-    Log(bool /*extraLogging*/) { }
+    Log(bool extraLogging) : _extraLogging(extraLogging) { }
 public:
     virtual ~Log() { }
     virtual void error(const std::string&) = 0;
