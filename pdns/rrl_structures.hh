@@ -5,6 +5,7 @@
 #ifdef WITH_RRL
 
 #include <boost/date_time/posix_time/ptime.hpp>
+#include <boost/date_time/posix_time/posix_time_io.hpp>
 #include <boost/make_shared.hpp>
 #include "iputils.hh"
 #include <set>
@@ -12,9 +13,10 @@
 namespace Rrl {
 
 typedef boost::posix_time::ptime Time;
+typedef boost::posix_time::time_duration TimeDiff;
 
 struct InternalNode {
-    Time block_till;
+    Time at_least_block_till;
     Time last_request_time;
     u_int64_t counter_ratio;
     u_int64_t counter_types;
@@ -22,13 +24,26 @@ struct InternalNode {
     pthread_mutex_t mutex;
 
     void reset();
-    void block(u_int32_t blockinPeriod);
+    void block(u_int32_t blockinPeriod, const Time &now);
 
-    InternalNode() : block_till(), last_request_time(), counter_ratio(0),
+    InternalNode() : at_least_block_till(), last_request_time(), counter_ratio(0),
         counter_types(0), blocked(false)
     { pthread_mutex_init(&mutex, 0); }
 
-    bool wasLocked() const { return !block_till.is_not_a_date_time(); }
+    bool wasLocked() const;
+
+    std::string toString() const {
+        std::ostringstream str;
+#define print(name) "\"" #name "\": \"" << name << "\""
+        str << "{ " << std::boolalpha
+            << print(at_least_block_till) << ", "
+            << print(last_request_time) << ", "
+            << print(counter_ratio) << ", "
+            << print(counter_types) << ", "
+            << print(blocked) << " }";
+        return str.str();
+#undef print
+    }
 };
 typedef boost::shared_ptr<InternalNode> InternalNodePtr;
 

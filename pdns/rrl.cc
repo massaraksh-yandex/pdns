@@ -25,6 +25,11 @@ bool RrlIpTable::timeToClean() const {
     return d_impl->timeToClean();
 }
 
+std::string RrlIpTable::getDBDump() const
+{
+    return d_impl->dbDump();
+}
+
 std::string RrlIpTable::reloadWhiteList(std::vector<std::string>::const_iterator begin, std::vector<std::string>::const_iterator end) {
     std::ostringstream str;
     if((end - begin) != 1) {

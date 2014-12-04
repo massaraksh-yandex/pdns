@@ -11,6 +11,7 @@ struct Map
 {
     typedef std::map<Netmask, InternalNodePtr> Cont;
     typedef Cont::iterator iterator;
+    typedef Cont::const_iterator const_iterator;
     typedef Cont::value_type value_type;
     typedef Cont::key_type key_type;
     typedef Cont::size_type size_type;
@@ -24,13 +25,19 @@ public:
 
     iterator begin() { return _map.begin(); }
     iterator end() { return _map.end(); }
+
+    const_iterator begin() const { return _map.begin(); }
+    const_iterator end() const { return _map.end(); }
+
     iterator find(const key_type& netmask) { return _map.find(netmask); }
     size_type size() const { return _map.size(); }
 
-    InternalNodePtr addAdderess(const key_type& key);
+    InternalNodePtr get(const key_type& key);
 
     void remove(const std::deque<Map::iterator>& nodes);
     void asyncClear();
+
+    std::string getDBDump();
 };
 
 class Stats;
@@ -41,6 +48,12 @@ class Stats {
 
     AtomicCounter _requests;
     AtomicCounter _lockedNodes;
+
+    // If Map mutex is locked by long operation (remove, getDBDump, etc) we only can get elements
+    // So it makes me crying  when all threads are waiting for unlocking.
+    // For preventing the TimedLocker is used
+    // This variable containing how much mutex cannot be locked but the executing was continued ny timeout
+    AtomicCounter _timeoutMutexes;
     Map& _map;
 
     Stats(Map& map) : _map(map) { }
@@ -49,9 +62,11 @@ public:
     void addRequest() { ++_requests; }
     void addLocked() { ++_lockedNodes; }
     void decLocked() { --_lockedNodes; }
+    void addTimeoutMutexes() { ++_timeoutMutexes; }
 
     unsigned requests() const { return _requests; }
     unsigned lockedNodes() const { return _lockedNodes; }
+    unsigned timeoutMutexes() const { return _timeoutMutexes; }
 
     Map::size_type nodes() const { return _map.size(); }
 

@@ -9,18 +9,23 @@ namespace Rrl {
 void InternalNode::reset() {
     Locker m(mutex);
 
-    block_till = Time();
+    at_least_block_till = Time();
     last_request_time = Time();
     counter_ratio = 0;
     counter_types = 0;
     blocked = false;
 }
 
-void InternalNode::block(u_int32_t blockinPeriod) {
+void InternalNode::block(u_int32_t blockinPeriod, const Time& now) {
     Locker m(mutex);
 
     blocked = true;
-    block_till = now() + boost::posix_time::milliseconds(blockinPeriod);
+    at_least_block_till = now + boost::posix_time::milliseconds(blockinPeriod);
+}
+
+bool InternalNode::wasLocked() const
+{
+     return Rrl::valid(at_least_block_till);
 }
 
 }
@@ -34,13 +39,12 @@ void RrlNode::update(const PackageInfo &info) {
     if(!table.enabled() || !valid())
         return;
 
-    {
-        Locker mutex(node->mutex);
-        node->last_request_time = Rrl::now();
-    }
-    Rrl::decreaseCounters(*this);
-    Rrl::increaseCounters(*this, info);
-    Rrl::tryBlockNode(*this);
+    Rrl::Time time = Rrl::now();
+    Rrl::updateCounters(*this, info, time);
+    Rrl::tryBlockNode(*this, time);
+
+    Locker mutex(node->mutex);
+    node->last_request_time = time;
 }
 
 bool RrlNode::blocked() const {

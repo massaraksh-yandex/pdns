@@ -40,7 +40,6 @@ void Params::registerParams()
     ::arg().setSwitch("rrl-enable-extra-logging", "Extra logging messages")  = "no";
     ::arg().set("rrl-log-file", "Path for log file") = "";
 
-    ::arg().setSwitch("rrl-enable-white-list", "Enable list of addresses, which cannot be blocked")  = "no";
     ::arg().set("rrl-white-list", "Path to white list") = "";
     ::arg().set("rrl-special-limits", "Path to file with special limits") = "";
     ::arg().set("rrl-cleaning-mode","The way to clean rrl nodes cache. Possible values: off, larger-than, remove-old") = "off";

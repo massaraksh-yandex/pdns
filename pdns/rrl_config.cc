@@ -128,7 +128,7 @@ void Limits::preParse(const std::string& pathToFile, boost::property_tree::ptree
 
 Whitelist::Whitelist() : ConfigReloadable("Whitelist was not set")
 {
-    std::string path = Params::toString("rrl-enable-white-list");
+    std::string path = Params::toString("rrl-white-list");
     if(!path.empty()) {
         std::string status = reload(path);
         if(!status.empty()) {

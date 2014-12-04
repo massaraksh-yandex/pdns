@@ -612,7 +612,8 @@ string RecursorControlParser::getAnswer(const string& question, RecursorControlP
 "reload-rrl-white-list [path]     reload file with nodes which are ignored by rrl\n"
 "reload-rrl-special-limits [path] reload file with special limits which are applied for selected addresses\n"
 "set-rrl-mode [mode]              switches rrl modes\n"
-"get-rrl-information              shows information about rrl\n";
+"get-rrl-information              shows information about rrl\n"
+"get-db-dump                      shows all rrl nodes";
 #else
   ;
 #endif // WITH_RRL
@@ -706,6 +707,10 @@ string RecursorControlParser::getAnswer(const string& question, RecursorControlP
 
   if(cmd=="get-rrl-information") {
     return rrlIpTable().information();
+  }
+
+  if(cmd=="get-db-dump") {
+    return rrlIpTable().getDBDump();
   }
 #endif // WITH_RRL
   

@@ -89,18 +89,11 @@ RrlNode RrlIpTableImpl::getNode(const ComboAddress &addr)
         return RrlNode(InternalNodePtr(), addr, true, SingleLimit());
 
     Stats::global()->addRequest();
-    InternalNodePtr rinp;
+
     Netmask address = _addressUtils.truncate(addr);
-
     bool whiteList = _whitelist.contains(address);
-    Map::iterator i = _map.find(address);
 
-    if (i == _map.end()) {
-        rinp = _map.addAdderess(_addressUtils.truncate(addr));
-    } else {
-        rinp = i->second;
-    }
-
+    InternalNodePtr rinp = _map.get(address);
     return RrlNode(rinp, addr, whiteList, _limits.get(addr));
 }
 
@@ -159,9 +152,15 @@ string RrlIpTableImpl::information() const
     str << "Rrl information:" << '\n'
         << "rrl-mode: " << Mode::toString(_mode) << '\n'
         << "total number of nodes: " << Stats::global()->nodes() << '\n'
-        << "total number of locked nodes: " << Stats::global()->lockedNodes() << '\n';
+        << "total number of locked nodes: " << Stats::global()->lockedNodes() << '\n'
+        << "total number of passed by timeout mutexes: " << Stats::global()->timeoutMutexes() << '\n';
 
     return str.str();
+}
+
+string RrlIpTableImpl::dbDump()
+{
+    return _map.getDBDump();
 }
 
 }
