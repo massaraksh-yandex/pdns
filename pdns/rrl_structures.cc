@@ -41,7 +41,7 @@ void RrlNode::update(const PackageInfo &info) {
 
     Rrl::Time time = Rrl::now();
 
-    if(!isInWhiteList) {
+    if(true || !isInWhiteList) {
         Rrl::updateCounters(*this, info, time);
         Rrl::tryBlockNode(*this, time);
     }
