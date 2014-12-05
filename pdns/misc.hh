@@ -361,7 +361,7 @@ public:
 
     void setToZero()
     {
-        atomic_exchange_and_add( &value_, value_ );
+        atomic_exchange_and_add( &value_, -value_ );
     }
 
 private:
