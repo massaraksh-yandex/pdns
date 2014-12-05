@@ -60,13 +60,7 @@ public:
 
     bool dropQueries() const { return _mode == Mode::Block; }
     bool enabled() const { return _mode != Mode::Off; }
-
-    bool timeToClean() const {
-        if(enabled())
-            return _cleaning->time();
-        else
-            return false;
-    }
+    bool timeToClean() const { return enabled() && _cleaning->time(); }
 
     const Map& map() const { return _map; }
 

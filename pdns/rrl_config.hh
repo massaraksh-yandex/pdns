@@ -15,8 +15,8 @@ protected:
     virtual void parse(boost::property_tree::ptree& tree) = 0;
     virtual void preParse(const std::string& pathToFile, boost::property_tree::ptree& tree) = 0;
 
-public:
     ConfigReloadable(const std::string err) : _errorMsg(err) { }
+public:
     virtual ~ConfigReloadable() { }
 
     std::string reload(const std::string &pathToFile) ;
@@ -37,6 +37,7 @@ public:
     Limits();
 
     SingleLimit get(const ComboAddress &address) const;
+    int size() const { return _data.size(); }
 };
 
 class Whitelist : public ConfigReloadable {
@@ -50,6 +51,7 @@ public:
     Whitelist();
 
     bool contains(const Netmask &netmask) const;
+    int size() const { return _data.size(); }
 };
 }
 

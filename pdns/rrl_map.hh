@@ -52,7 +52,7 @@ class Stats {
     // If Map mutex is locked by long operation (remove, getDBDump, etc) we only can get elements
     // So it makes me crying  when all threads are waiting for unlocking.
     // For preventing the TimedLocker is used
-    // This variable containing how much mutex cannot be locked but the executing was continued ny timeout
+    // This variable containing how much times mutex cannot be locked but the executing was continued by timeout
     AtomicCounter _timeoutMutexes;
     Map& _map;
 

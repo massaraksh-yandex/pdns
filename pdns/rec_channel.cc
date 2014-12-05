@@ -101,7 +101,7 @@ void RecursorControlChannel::connect(const string& path, const string& fname)
   memset(&remote,0,sizeof(remote));
   
   remote.sun_family=AF_UNIX;
-  strcpy(remote.sun_path,(path+"/"+fname).c_str());
+  strncpy(remote.sun_path,(path+"/"+fname).c_str(), 107);
   if(::connect(d_fd, (sockaddr*)&remote, sizeof(remote)) < 0) {
     unlink(d_local.sun_path);
     throw AhuException("Unable to connect to remote '"+path+"/"+fname+"': "+string(strerror(errno)));

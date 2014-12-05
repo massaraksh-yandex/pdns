@@ -40,8 +40,11 @@ void RrlNode::update(const PackageInfo &info) {
         return;
 
     Rrl::Time time = Rrl::now();
-    Rrl::updateCounters(*this, info, time);
-    Rrl::tryBlockNode(*this, time);
+
+    if(!isInWhiteList) {
+        Rrl::updateCounters(*this, info, time);
+        Rrl::tryBlockNode(*this, time);
+    }
 
     Locker mutex(node->mutex);
     node->last_request_time = time;
