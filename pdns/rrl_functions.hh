@@ -38,15 +38,20 @@ public:
 class TimedLocker {
     pthread_mutex_t& _m;
     timespec _t;
-    bool _ret;
+    bool _result;
 public:
-    TimedLocker(pthread_mutex_t& m, int microsec) : _m(m), _ret(true) {
-        clock_gettime(CLOCK_REALTIME, &_t);
-        _t.tv_nsec += microsec*1000000;
+    TimedLocker(pthread_mutex_t& m) : _m(m), _result(false) { }
+    ~TimedLocker() { if(_result)pthread_mutex_unlock(&_m); }
+
+    inline bool tryLock(unsigned microsec) {
+        if(!clock_gettime(CLOCK_REALTIME, &_t)) {
+            _t.tv_nsec += microsec*1000000;
+            return (_result = !pthread_mutex_timedlock(&_m, &_t));
+        } else {
+            return false;
+        }
     }
-    ~TimedLocker() { if(!_ret)pthread_mutex_unlock(&_m); }
-    inline bool successLock() { return (_ret = pthread_mutex_timedlock(&_m, &_t)) == 0; }
-    inline bool isSucceed() const { return !_ret; }
+    inline bool isSucceed() const { return _result; }
 };
 
 #endif // RRL_FUNCTIONS_HH

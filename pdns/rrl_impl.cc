@@ -154,7 +154,9 @@ string RrlIpTableImpl::information() const
         << "rrl-mode: " << Mode::toString(_mode) << '\n'
         << "total number of nodes: " << Stats::global()->nodes() << '\n'
         << "total number of locked nodes: " << Stats::global()->lockedNodes() << '\n'
-        << "total number of passed by timeout mutexes: " << Stats::global()->timeoutMutexes() << '\n';
+        << "total number of passed by timeout mutexes: " << Stats::global()->timeoutMutexes() << '\n'
+        << "size of whitelist:" << _whitelist.size() << '\n'
+        << "size of limits:" << _limits.size() << '\n';
 
     return str.str();
 }

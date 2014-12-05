@@ -25,9 +25,9 @@ InternalNodePtr Map::get(const key_type &key)
 {
     iterator it = _map.find(key);
 
-    TimedLocker locker(_mutex, 100);
+    TimedLocker locker(_mutex);
     if(it == end()) {
-        if(locker.successLock()) {
+        if(locker.tryLock(100)) {
             return _map.insert(value_type(key, boost::make_shared<InternalNode>())).first->second;
         } else {
             Stats::global()->addTimeoutMutexes();
