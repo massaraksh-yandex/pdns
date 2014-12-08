@@ -62,7 +62,9 @@ struct RemoveOld : public Cleaning {
         remove_if_older = Params::toInt("rrl-clean-remove-if-older");
     }
 
-    bool needToDelete(InternalNode& node) const { return node.last_request_time < border && !node.blocked; }
+    bool needToDelete(InternalNode& node) const {
+        return valid(node.last_request_time) && node.last_request_time < border && !node.blocked;
+    }
 
     void postProcessingQueue(Queue&) { }
 
@@ -86,6 +88,12 @@ void Cleaning::tryUnlockNode(Map::iterator it)
 
 void Cleaning::clean()
 {
+    PoliteLocker locker(_mutex);
+    if(!locker.tryLock())
+        return;
+
+    Locker lock(_map.mutex());
+
     Queue queue;
     Log::log().message("cleaning rrl cache");
     onClean();
@@ -97,6 +105,7 @@ void Cleaning::clean()
             queue.push_back(it);
         }
     }
+
     postProcessingQueue(queue);
     _map.remove(queue);
 }

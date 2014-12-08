@@ -40,8 +40,8 @@ InternalNodePtr Map::get(const key_type &key)
 
 void Map::remove(const std::deque<Map::iterator> &nodes)
 {
-    Locker m(_mutex);
-    for(size_type i = 0; i < _map.size(); i++) {
+//    Locker m(_mutex);
+    for(size_type i = 0; i < nodes.size(); i++) {
         _map.erase(nodes[i]);
     }
 }

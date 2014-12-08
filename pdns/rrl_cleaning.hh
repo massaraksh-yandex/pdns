@@ -16,8 +16,9 @@ class Cleaning {
 protected:
     typedef std::deque<Map::iterator> Queue;
     Map& _map;
+    pthread_mutex_t _mutex;
 
-    Cleaning(Map& map) : _map(map){ }
+    Cleaning(Map& map) : _map(map) { pthread_mutex_init(&_mutex, 0); }
 
     void tryUnlockNode(Map::iterator it);
 
