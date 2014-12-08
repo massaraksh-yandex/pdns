@@ -1997,7 +1997,7 @@ try
     // 'run' updates g_now for us
 
 #ifdef WITH_RRL
-    if(rrlIpTable().timeToClean()) {
+    if(/*!(counter%500) &&*/ rrlIpTable().timeToClean()) {
         MT->makeThread(Rrl::cleanRrlCache, 0);
     }
 #endif

@@ -11,7 +11,7 @@ set(LOCALSTATEDIR ${DESTDIR}/var/run)
 set(DOCDIR "docs")
 
 find_program(RAGEL ragel)
-find_program(XMLTO xmlto)
+find_program(XMLTO xmlto) # add asciidoc
 find_library(RT_LIBRARY NAMES rt)
 find_package(Boost 1.40 REQUIRED)
 find_package(Lua51 REQUIRED)

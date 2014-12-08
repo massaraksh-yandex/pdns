@@ -37,6 +37,8 @@ public:
     void remove(const std::deque<Map::iterator>& nodes);
     void asyncClear();
 
+    pthread_mutex_t& mutex() { return _mutex; }
+
     std::string getDBDump();
 };
 

@@ -35,6 +35,16 @@ public:
     ~Locker() { pthread_mutex_unlock(&_m); }
 };
 
+class PoliteLocker {
+    pthread_mutex_t& _m;
+    bool _locked;
+public:
+    PoliteLocker(pthread_mutex_t& m) : _m(m), _locked(false) { }
+    ~PoliteLocker() { if(_locked) pthread_mutex_unlock(&_m); }
+    bool tryLock() { return (_locked = !pthread_mutex_trylock(&_m)); }
+    bool locked() const { return _locked; }
+};
+
 class TimedLocker {
     pthread_mutex_t& _m;
     timespec _t;
