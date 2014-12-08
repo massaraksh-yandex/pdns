@@ -28,15 +28,6 @@ std::string ConfigReloadable::reload(const std::string &pathToFile) {
 
         return error.str();
     }
-    catch(const ptree_bad_path& err) {
-        exception = err.what();
-    }
-    catch(const ptree_bad_data& err) {
-        exception = err.what();
-    }
-    catch(const file_parser_error& err) {
-        exception = err.what();
-    }
     catch(const std::exception& err) {
         exception = err.what();
     }
